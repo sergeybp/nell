@@ -47,7 +47,7 @@ public class SimpleWord {
     //TODO
     public static boolean isPunctuation(String word){
         for(int i = 0 ; i < puctuations.length(); i ++){
-            if(word.equals(puctuations.charAt(i))){
+            if(word.equals(String.valueOf(puctuations.charAt(i)))){
                 return true;
             }
         }
@@ -63,9 +63,21 @@ public class SimpleWord {
         }
         isPunctuation = false;
         pos = (String) wordJson.get("pos");
+        if(pos == null){
+            pos = "null";
+        }
         casee = (String) wordJson.get("case");
+        if(casee == null){
+            casee = "null";
+        }
         lexem = (String) wordJson.get("lexem");
+        if(lexem == null){
+            lexem = "null";
+        }
         number = (String) wordJson.get("number");
+        if(number == null){
+            number = "null";
+        }
     }
 
 

@@ -15,6 +15,7 @@ public class PatternExtractor {
 
     public Pair<HashMap<String, HashMap<String, Integer>>, PatternPool> learn(Ontology ontology, String processedTextPath) {
         System.out.println("[Pattern Extractor] Learning step.");
+        Main.logWriter.write("[Pattern Extractor] Learning step.");
         HashMap<String, HashMap<String, Integer>> promotedPatternsDict = new HashMap<>();
         PatternPool promotedPatternsPool = new PatternPool();
         ArrayList<File> files = getFiles(processedTextPath);
@@ -64,16 +65,18 @@ public class PatternExtractor {
                     Main.maxID = Main.maxID + 1;
                     promotedPatternsPool.addPattern(pattern);
                     //TODO log
-                    System.out.println("Found new promoted pattern "+patternString+" in sentence "+sentence.stringg+".");
+                    //System.out.println("Found new promoted pattern "+patternString+" in sentence "+sentence.stringg+".");
+                    Main.logWriter.write("Found new promoted pattern ["+patternString+"] in sentence ["+sentence.stringg+"]");
                 }
             }
         }
         return new Pair<>(promotedPatternsDict,promotedPatternsPool);
     }
-    
+
     public Pair<PatternPool, Ontology> evaluate(Ontology ontology, PatternPool patternPool, PatternPool promotedPatternsPool, HashMap<String, HashMap<String, Integer>> promotedPatternsDict, String processedTextPath, Integer treshold){
         treshold = 0;
-        System.out.println("[Pattern Extractor] Evaluating step.");
+        //System.out.println("[Pattern Extractor] Evaluating step.");
+        Main.logWriter.write("[Pattern Extractor] Evaluating step.");
         HashMap<String, Integer> patternsInText = patternsInTextDict(promotedPatternsPool, processedTextPath);
         for(Category instance : ontology.instances){
             HashMap<String, Double> precision = new HashMap<>();
@@ -107,20 +110,22 @@ public class PatternExtractor {
                 if(i <= 0){
                     break;
                 }
-                sPrecision.remove(item);
+                sPrecision.remove(item.getKey());
                 i -= 1;
             }
             for(Pattern pattern : promotedPatternsPool.patterns){
                 Double precisio = 0d;
-                if(sPrecision.containsKey(pattern.pattern)){
+                try {
                     precisio = sPrecision.get(pattern.pattern);
-                } else {
+                }
+                 catch (Exception e){
                     continue;
                 }
                 if(instance.addPromotedPattern(pattern,promotedPatternsPool,patternPool)){
                     patternPool.addPattern(pattern);
                     //TODO log
-                    System.out.println("Add pattern "+pattern.pattern+" for category "+instance.ctaegoryName+" with precision score " + precisio);
+                    //System.out.println("Add pattern "+pattern.pattern+" for category "+instance.ctaegoryName+" with precision score " + precisio);
+                    Main.logWriter.write("Add pattern ["+pattern.pattern+"] for category ["+instance.ctaegoryName+"] with precision score [" + precisio+"]");
                 }
             }
 
@@ -168,12 +173,16 @@ public class PatternExtractor {
     }
 
     Boolean subFinder(ArrayList<String> sentenceTokenize, ArrayList<String> patternTokenize){
-        for(String s : sentenceTokenize){
-            if(!patternTokenize.contains(s)){
-                return false;
+        int check = 0;
+        for(String s : patternTokenize){
+            if(!sentenceTokenize.contains(s)){
+                check++;
             }
         }
-        return true;
+        if(check == patternTokenize.size()){
+            return true;
+        }
+        return false;
     }
 
     Pair<Integer, Integer> findPatternInSentence(Sentence sentence, Category instance) {
@@ -205,21 +214,26 @@ public class PatternExtractor {
         return res;
     }
 
-    public ArrayList<String> splitSentence(String stringg){
-        String tmp  = "";
+    public ArrayList<String> splitSentence(String stringg) {
+        String tmp = "";
         ArrayList<String> res = new ArrayList<>();
-        for(int i = 0; i < stringg.length(); i++){
-            if(SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' '){
-                if(!tmp.equals("")){
+        for (int i = 0; i < stringg.length(); i++) {
+            if (SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' ') {
+                if (!tmp.equals("")) {
                     res.add(tmp);
+                    if(stringg.charAt(i) != ' '){
+                        res.add(String.valueOf(stringg.charAt(i)));
+                    }
                     tmp = "";
                 }
             } else {
                 tmp += stringg.charAt(i);
+                if(i == stringg.length() -1){
+                    res.add(tmp);
+                }
             }
         }
         return res;
-
     }
 
     class ValueComparator implements Comparator<String> {

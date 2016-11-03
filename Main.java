@@ -15,8 +15,9 @@ public class Main {
 
 
     public static Integer maxID = 1;
+    public static LogWriter logWriter = new LogWriter();
 
-    static Integer ITERATIONS = 5;
+    static Integer ITERATIONS = 1;
     static String processedTextsPath = "processed";
     static String patterPoolPath = "patterns.xlsx";
     static String ontologyPath = "categories_animals_ru.xls";
@@ -32,6 +33,7 @@ public class Main {
         PatternExtractor patternExtractor = new PatternExtractor();
         for(int i = 0 ; i < ITERATIONS; i++){
             System.out.println("[Iteration "+i+"]");
+            logWriter.write("[Iteration "+i+"]");
             ontology = instanceExtractor.learn(patternPool,ontology,processedTextsPath);
             ontology = instanceExtractor.evaluate(ontology,processedTextsPath, 1);
             Pair<HashMap<String, HashMap<String, Integer>>, PatternPool> pair = patternExtractor.learn(ontology,processedTextsPath);

@@ -28,21 +28,26 @@ public class Sentence {
         }
     }
 
-    public ArrayList<String> splitSentence(){
-        String tmp  = "";
+    public ArrayList<String> splitSentence() {
+        String tmp = "";
         ArrayList<String> res = new ArrayList<>();
-        for(int i = 0; i < stringg.length(); i++){
-            if(SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' '){
-                if(!tmp.equals("")){
+        for (int i = 0; i < stringg.length(); i++) {
+            if (SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' ') {
+                if (!tmp.equals("")) {
                     res.add(tmp);
+                    if(stringg.charAt(i) != ' '){
+                        res.add(String.valueOf(stringg.charAt(i)));
+                    }
                     tmp = "";
                 }
             } else {
                 tmp += stringg.charAt(i);
+                if(i == stringg.length() -1){
+                    res.add(tmp);
+                }
             }
         }
         return res;
-
     }
 
     public Pair<Integer, Integer> findWordsInSentence(String word1, String word2){

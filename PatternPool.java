@@ -51,13 +51,13 @@ public class PatternPool {
             cell = cellIterator.next();
             String arg1_case = cell.getStringCellValue();
             cell = cellIterator.next();
-            String arg1_num = cell.getStringCellValue();
-            cell = cellIterator.next();
-            String arg1_pos = cell.getStringCellValue();
-            cell = cellIterator.next();
             String arg2_case = cell.getStringCellValue();
             cell = cellIterator.next();
+            String arg1_num = cell.getStringCellValue();
+            cell = cellIterator.next();
             String arg2_num = cell.getStringCellValue();
+            cell = cellIterator.next();
+            String arg1_pos = cell.getStringCellValue();
             cell = cellIterator.next();
             String arg2_pos = cell.getStringCellValue();
 

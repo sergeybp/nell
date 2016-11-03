@@ -17,6 +17,7 @@ public class InstanceExtractor {
 
     public Ontology learn(PatternPool patternPool, Ontology ontology, String processedTextPath) {
         System.out.println("[InstanceExtractor] -- Learning step.");
+        Main.logWriter.write("[InstanceExtractor] -- Learning step.");
         ArrayList<File> files = getFiles(processedTextPath);
         for (File file : files) {
             ProcessedText text = new ProcessedText();
@@ -33,6 +34,7 @@ public class InstanceExtractor {
     Ontology evaluate(Ontology ontology, String processedTextPath, Integer treshold){
         treshold = 1;
         System.out.println("[InstanceExtractor] -- Evaluating step.");
+        Main.logWriter.write("[InstanceExtractor] -- Evaluating step.");
         for(Category instance : ontology.instances){
             HashMap<String, Double> precision = new HashMap<>();
             for(HashMap.Entry<String,Double> promotedInstance : instance.promotedInstances.entrySet()){
@@ -56,6 +58,7 @@ public class InstanceExtractor {
                 if(instance.addPromotedInstances(promotedInstance.getKey())){
                     //TODO log
                     System.out.println("Adding new instance" +promotedInstance.getKey()+ "to Category" +instance.ctaegoryName+ "with precision value " + promotedInstance.getValue());
+                    Main.logWriter.write("Adding new instance [" +promotedInstance.getKey()+ "] to Category [" +instance.ctaegoryName+ "] with precision value [" + promotedInstance.getValue()+"]");
 
                 }
             }
@@ -107,6 +110,7 @@ public class InstanceExtractor {
                             if (checkWordForPattern(arg2, pattern.arg2)) {
                                 //TODO log
                                 System.out.println("Found new promoted instance " + arg2.lexem + " in sentence " + sentence.stringg + " with pattern " + pattern.pattern);
+                                Main.logWriter.write("Found new promoted instance [" + arg2.lexem + "] in sentence [" + sentence.stringg + "] with pattern [" + pattern.pattern+"]");
                                 if (category.promotedInstances.containsKey(arg2.lexem)) {
                                     Double a = category.promotedInstances.get(arg2.lexem);
                                     category.promotedInstances.put(arg2.lexem, a + 1d);
@@ -175,10 +179,16 @@ public class InstanceExtractor {
             if (SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' ') {
                 if (!tmp.equals("")) {
                     res.add(tmp);
+                    if(stringg.charAt(i) != ' '){
+                        res.add(String.valueOf(stringg.charAt(i)));
+                    }
                     tmp = "";
                 }
             } else {
                 tmp += stringg.charAt(i);
+                if(i == stringg.length() -1){
+                    res.add(tmp);
+                }
             }
         }
         return res;
