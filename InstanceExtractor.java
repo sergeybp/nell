@@ -16,7 +16,7 @@ public class InstanceExtractor {
 
 
     public Ontology learn(PatternPool patternPool, Ontology ontology, String processedTextPath) {
-        System.out.println("[InstanceExtractor] -- Learning step.");
+        //System.out.println("[InstanceExtractor] -- Learning step.");
         Main.logWriter.write("[InstanceExtractor] -- Learning step.");
         ArrayList<File> files = getFiles(processedTextPath);
         for (File file : files) {
@@ -33,7 +33,7 @@ public class InstanceExtractor {
 
     Ontology evaluate(Ontology ontology, String processedTextPath, Integer treshold){
         treshold = 1;
-        System.out.println("[InstanceExtractor] -- Evaluating step.");
+        //System.out.println("[InstanceExtractor] -- Evaluating step.");
         Main.logWriter.write("[InstanceExtractor] -- Evaluating step.");
         for(Category instance : ontology.instances){
             HashMap<String, Double> precision = new HashMap<>();
@@ -42,22 +42,24 @@ public class InstanceExtractor {
                 Integer numInText = findNumberOfInstanceInText(promotedInstance, processedTextPath);
                 precision.put(promotedInstance.getKey(), numOfCoOccurence/(Double.valueOf(""+numInText)));
             }
-            ValueComparator bvc = new ValueComparator(precision);
-            TreeMap<String, Double> sPrecision = new TreeMap<String, Double>(bvc);
-            sPrecision.putAll(precision);
-            Integer i = sPrecision.size() -treshold  - 1;
-            for(Map.Entry<String,Double> item: sPrecision.entrySet()){
-                if(i <= 0){
-                    break;
+            Integer i = precision.size() -treshold  - 1;
+            while ( i > 0){
+                Double min = 10000000d;
+                String key = "";
+                for(HashMap.Entry<String,Double> item : precision.entrySet()){
+                    if(item.getValue() < min){
+                        key = item.getKey();
+                        min = item.getValue();
+                    }
                 }
-                precision.remove(item.getKey());
+                precision.remove(key);
                 i--;
             }
             instance.promotedInstances = new HashMap<>();
-            for(Map.Entry<String,Double> promotedInstance : sPrecision.entrySet()){
+            for(HashMap.Entry<String,Double> promotedInstance : precision.entrySet()){
                 if(instance.addPromotedInstances(promotedInstance.getKey())){
                     //TODO log
-                    System.out.println("Adding new instance" +promotedInstance.getKey()+ "to Category" +instance.ctaegoryName+ "with precision value " + promotedInstance.getValue());
+                    //System.out.println("Adding new instance" +promotedInstance.getKey()+ "to Category" +instance.ctaegoryName+ "with precision value " + promotedInstance.getValue());
                     Main.logWriter.write("Adding new instance [" +promotedInstance.getKey()+ "] to Category [" +instance.ctaegoryName+ "] with precision value [" + promotedInstance.getValue()+"]");
 
                 }
@@ -109,7 +111,7 @@ public class InstanceExtractor {
                         if (checkWordForPattern(arg1, pattern.arg1)) {
                             if (checkWordForPattern(arg2, pattern.arg2)) {
                                 //TODO log
-                                System.out.println("Found new promoted instance " + arg2.lexem + " in sentence " + sentence.stringg + " with pattern " + pattern.pattern);
+                                //System.out.println("Found new promoted instance " + arg2.lexem + " in sentence " + sentence.stringg + " with pattern " + pattern.pattern);
                                 Main.logWriter.write("Found new promoted instance [" + arg2.lexem + "] in sentence [" + sentence.stringg + "] with pattern [" + pattern.pattern+"]");
                                 if (category.promotedInstances.containsKey(arg2.lexem)) {
                                     Double a = category.promotedInstances.get(arg2.lexem);

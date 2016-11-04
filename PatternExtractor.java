@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 public class PatternExtractor {
 
     public Pair<HashMap<String, HashMap<String, Integer>>, PatternPool> learn(Ontology ontology, String processedTextPath) {
-        System.out.println("[Pattern Extractor] Learning step.");
+        //System.out.println("[Pattern Extractor] Learning step.");
         Main.logWriter.write("[Pattern Extractor] Learning step.");
         HashMap<String, HashMap<String, Integer>> promotedPatternsDict = new HashMap<>();
         PatternPool promotedPatternsPool = new PatternPool();
@@ -23,6 +23,9 @@ public class PatternExtractor {
             ProcessedText text = new ProcessedText();
             text.fromJson(file);
             for (Sentence sentence : text.sentences) {
+                if(sentence.stringg.equals("Ловит также зайцев пищух мелких хищников (горностай) птиц (белых куропаток гусей уток) не пренебрегает рыбой и падалью.")){
+                    int a = 1;
+                }
                 for (Category instance : ontology.instances) {
                     Pair<Integer, Integer> poss = findPatternInSentence(sentence, instance);
                     Integer pos1 = poss.getKey();
@@ -85,6 +88,9 @@ public class PatternExtractor {
                 if(promotedPatternsDict.containsKey(pattern.pattern)){
                     if(promotedPatternsDict.get(pattern.pattern).containsKey(instance.ctaegoryName)){
                         numOfCoOccurence = promotedPatternsDict.get(pattern.pattern).get(instance.ctaegoryName);
+                        if(numOfCoOccurence == null){
+                            int a = 1;
+                        }
                     } else {
                         continue;
                     }
@@ -98,25 +104,33 @@ public class PatternExtractor {
                     continue;
                 }
                 if(numOfCoOccurence != null && numInText != null){
-                    precision.put(pattern.pattern, Double.valueOf(numOfCoOccurence) / Double.valueOf(numInText));
+                    precision.put(pattern.pattern, Double.valueOf(""+numOfCoOccurence) / Double.valueOf(""+numInText));
+                    int a = 1;
                 }
             }
-            ValueComparator bvc = new ValueComparator(precision);
-            TreeMap<String, Double> sPrecision = new TreeMap<String, Double>(bvc);
-            sPrecision.putAll(precision);
 
-            Integer i = sPrecision.size() - treshold - 1;
-            for(Map.Entry<String,Double> item: sPrecision.entrySet()){
-                if(i <= 0){
-                    break;
+            Integer i = precision.size() - treshold - 1;
+
+            while ( i > 0){
+                Double min = 10000000d;
+                String key = "";
+                for(HashMap.Entry<String,Double> item : precision.entrySet()){
+                    if(item.getValue() < min){
+                        key = item.getKey();
+                        min = item.getValue();
+                    }
                 }
-                sPrecision.remove(item.getKey());
-                i -= 1;
+                precision.remove(key);
+                i--;
             }
+
             for(Pattern pattern : promotedPatternsPool.patterns){
                 Double precisio = 0d;
                 try {
-                    precisio = sPrecision.get(pattern.pattern);
+                    precisio = precision.get(pattern.pattern);
+                    if(precisio == null){
+                        continue;
+                    }
                 }
                  catch (Exception e){
                     continue;
@@ -234,24 +248,6 @@ public class PatternExtractor {
             }
         }
         return res;
-    }
-
-    class ValueComparator implements Comparator<String> {
-        Map<String, Double> base;
-
-        public ValueComparator(Map<String, Double> base) {
-            this.base = base;
-        }
-
-        // Note: this comparator imposes orderings that are inconsistent with
-        // equals.
-        public int compare(String a, String b) {
-            if (base.get(a) >= base.get(b)) {
-                return -1;
-            } else {
-                return 1;
-            } // returning 0 would merge keys
-        }
     }
 
 }

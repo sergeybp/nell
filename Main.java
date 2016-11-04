@@ -17,7 +17,7 @@ public class Main {
     public static Integer maxID = 1;
     public static LogWriter logWriter = new LogWriter();
 
-    static Integer ITERATIONS = 1;
+    static Integer ITERATIONS = 3;
     static String processedTextsPath = "processed";
     static String patterPoolPath = "patterns.xlsx";
     static String ontologyPath = "categories_animals_ru.xls";
