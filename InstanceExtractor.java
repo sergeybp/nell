@@ -57,8 +57,8 @@ public class InstanceExtractor {
             }
             instance.promotedInstances = new HashMap<>();
             for(HashMap.Entry<String,Double> promotedInstance : precision.entrySet()){
+
                 if(instance.addPromotedInstances(promotedInstance.getKey())){
-                    //TODO log
                     //System.out.println("Adding new instance" +promotedInstance.getKey()+ "to Category" +instance.ctaegoryName+ "with precision value " + promotedInstance.getValue());
                     Main.logWriter.write("Adding new instance [" +promotedInstance.getKey()+ "] to Category [" +instance.ctaegoryName+ "] with precision value [" + promotedInstance.getValue()+"]");
 
@@ -110,7 +110,7 @@ public class InstanceExtractor {
                     if (arg1.lexem.equals(category.ctaegoryName)) {
                         if (checkWordForPattern(arg1, pattern.arg1)) {
                             if (checkWordForPattern(arg2, pattern.arg2)) {
-                                //TODO log
+
                                 //System.out.println("Found new promoted instance " + arg2.lexem + " in sentence " + sentence.stringg + " with pattern " + pattern.pattern);
                                 Main.logWriter.write("Found new promoted instance [" + arg2.lexem + "] in sentence [" + sentence.stringg + "] with pattern [" + pattern.pattern+"]");
                                 if (category.promotedInstances.containsKey(arg2.lexem)) {
@@ -179,6 +179,9 @@ public class InstanceExtractor {
         ArrayList<String> res = new ArrayList<>();
         for (int i = 0; i < stringg.length(); i++) {
             if (SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' ') {
+                if(tmp.equals("") && SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i)))){
+                    res.add(String.valueOf(stringg.charAt(i)));
+                }
                 if (!tmp.equals("")) {
                     res.add(tmp);
                     if(stringg.charAt(i) != ' '){
@@ -194,24 +197,6 @@ public class InstanceExtractor {
             }
         }
         return res;
-    }
-
-    class ValueComparator implements Comparator<String> {
-        Map<String, Double> base;
-
-        public ValueComparator(Map<String, Double> base) {
-            this.base = base;
-        }
-
-        // Note: this comparator imposes orderings that are inconsistent with
-        // equals.
-        public int compare(String a, String b) {
-            if (base.get(a) >= base.get(b)) {
-                return -1;
-            } else {
-                return 1;
-            } // returning 0 would merge keys
-        }
     }
 
 }

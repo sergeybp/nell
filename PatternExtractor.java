@@ -66,8 +66,10 @@ public class PatternExtractor {
                     }
                     Pattern pattern = new Pattern(Main.maxID+1,patternString,patternWord1,patternWord2);
                     Main.maxID = Main.maxID + 1;
+                    if(pattern.pattern.equals("arg1 arg2") || pattern.pattern.equals("arg2 arg1")){
+                        continue;
+                    }
                     promotedPatternsPool.addPattern(pattern);
-                    //TODO log
                     //System.out.println("Found new promoted pattern "+patternString+" in sentence "+sentence.stringg+".");
                     Main.logWriter.write("Found new promoted pattern ["+patternString+"] in sentence ["+sentence.stringg+"]");
                 }
@@ -109,6 +111,17 @@ public class PatternExtractor {
                 }
             }
 
+
+
+
+/*            //TODO maybe it's not correct
+            for(Pattern pattern: patternPool.patterns){
+                if(precision.containsKey(pattern.pattern)){
+                    precision.remove(pattern.pattern);
+                }
+            }
+*/
+
             Integer i = precision.size() - treshold - 1;
 
             while ( i > 0){
@@ -137,7 +150,6 @@ public class PatternExtractor {
                 }
                 if(instance.addPromotedPattern(pattern,promotedPatternsPool,patternPool)){
                     patternPool.addPattern(pattern);
-                    //TODO log
                     //System.out.println("Add pattern "+pattern.pattern+" for category "+instance.ctaegoryName+" with precision score " + precisio);
                     Main.logWriter.write("Add pattern ["+pattern.pattern+"] for category ["+instance.ctaegoryName+"] with precision score [" + precisio+"]");
                 }
@@ -170,6 +182,7 @@ public class PatternExtractor {
                     } else {
                         patternTokenize.remove("arg1");
                     }
+
                     if(subFinder(sentenceTokenize,patternTokenize)){
                         if (patternsInTextDict.containsKey(pattern.pattern)){
                             Integer a = patternsInTextDict.get(pattern.pattern);
@@ -186,10 +199,12 @@ public class PatternExtractor {
         return patternsInTextDict;
     }
 
+
+    //TODO it's not nice really
     Boolean subFinder(ArrayList<String> sentenceTokenize, ArrayList<String> patternTokenize){
         int check = 0;
         for(String s : patternTokenize){
-            if(!sentenceTokenize.contains(s)){
+            if(sentenceTokenize.contains(s)){
                 check++;
             }
         }
@@ -233,6 +248,9 @@ public class PatternExtractor {
         ArrayList<String> res = new ArrayList<>();
         for (int i = 0; i < stringg.length(); i++) {
             if (SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' ') {
+                if(tmp.equals("") && SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i)))){
+                    res.add(String.valueOf(stringg.charAt(i)));
+                }
                 if (!tmp.equals("")) {
                     res.add(tmp);
                     if(stringg.charAt(i) != ' '){

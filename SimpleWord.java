@@ -9,7 +9,7 @@ import java.io.IOException;
  */
 public class SimpleWord {
 
-    public static String puctuations = ".,&!?#\"\':;()";
+    public static String puctuations = ".,&!?-#\"\':;()";
 
     public boolean isPunctuation = false;
     public String pos;

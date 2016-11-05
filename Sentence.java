@@ -33,6 +33,9 @@ public class Sentence {
         ArrayList<String> res = new ArrayList<>();
         for (int i = 0; i < stringg.length(); i++) {
             if (SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i))) || stringg.charAt(i) == ' ') {
+                if(tmp.equals("") && SimpleWord.isPunctuation(String.valueOf(stringg.charAt(i)))){
+                    res.add(String.valueOf(stringg.charAt(i)));
+                }
                 if (!tmp.equals("")) {
                     res.add(tmp);
                     if(stringg.charAt(i) != ' '){
