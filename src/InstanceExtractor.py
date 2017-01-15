@@ -20,7 +20,7 @@ def load_dictionary(file):
         obj = pickle.load(f)
     return obj
 
-def extract_instances(db, iteration):
+def extract_instances(db, iteration, useMorph):
     # iterate throw sentences, that contains categories
     # try to find patterns in this sentences
     logging.info("Begin instances extracting")
@@ -58,7 +58,13 @@ def extract_instances(db, iteration):
                     else:
                         continue
 
-                    if check_words_for_pattern(arg1, arg2, pattern):
+
+                    flag = False
+                    if not useMorph:
+                        flag = True
+                    if(check_words_for_pattern(arg1, arg2, pattern)):
+                        flag = True
+                    if flag:
                         item = db['promoted_instances'].find({'category_name': cat['category_name'],
                                                               'lexem': arg2['lexem']})
                         if item.count() > 0:

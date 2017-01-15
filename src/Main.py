@@ -38,7 +38,7 @@ def connect_to_database():
 
     client = MongoClient('localhost', 27017)
     global db
-    db = client.test
+    db = client.experiments
 
 def inizialize():
     # Read initial ontology and patterns
@@ -194,6 +194,9 @@ def main():
     insIndex = 0
     patIndex = 0
 
+    #FIXME flag for using morph info
+    useMorph = False
+
     ins_ngrams = dict()
     pat_ngrams = dict()
 
@@ -233,7 +236,7 @@ def main():
         startTime = time.time()
         print('Iteration [%s] begins' % str(iteration))
         logging.info('=============ITERATION [%s] BEGINS=============' % str(iteration))
-        InstanceExtractor.extract_instances(db, iteration)
+        InstanceExtractor.extract_instances(db, iteration, useMorph)
         InstanceExtractor.evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, ins_length)
         PatternExtractor.extract_patterns(db, iteration)
         PatternExtractor.evaluate_patterns(db, treshold, iteration, pat_ngrams, MODE, pat_length)
