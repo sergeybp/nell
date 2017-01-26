@@ -126,7 +126,7 @@ def extract_patterns(db, iteration=1):
     return
 
 
-def evaluate_patterns(db, treshold, iteration, tmpDict, MODE, dict_length):
+def evaluate_patterns(db, treshold, iteration, tmpDict, MODE, dict_length, cat):
     logging.info('Begin patterns evaluation')
     patterns = db['patterns'].find()
     tmpPats = list()
@@ -169,7 +169,7 @@ def evaluate_patterns(db, treshold, iteration, tmpDict, MODE, dict_length):
             flag = False
             counter = 0
             for i in range(dict_length):
-                x = load_dictionary('ngrams_dictionary_for_patterns' + str(i) + '.pkl')
+                x = load_dictionary('ngrams_dictionary_for_patterns.' + cat + '.' + str(i) + '.pkl')
                 try:
                     precision = pat['coocurence_count'] / x[pattern_string]
                     flag = True

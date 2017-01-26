@@ -101,7 +101,7 @@ def extract_instances(db, iteration, useMorph):
     return
 
 
-def evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, dict_length):
+def evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, dict_length, cat):
     logging.info('Begin instances evaluating')
     promoted_instances = db['promoted_instances'].find()
     for instance in promoted_instances:
@@ -124,7 +124,7 @@ def evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, dict_length):
                 flag = False
                 counter = 0
                 for i in range(dict_length):
-                    x = load_dictionary('ngrams_dictionary_for_instances' + str(i) + '.pkl')
+                    x = load_dictionary('ngrams_dictionary_for_instances.' + cat + '.' + str(i) + '.pkl')
                     try:
                         precision = instance['count_in_text'] / x[instance['lexem'].lower()]
                         flag = True

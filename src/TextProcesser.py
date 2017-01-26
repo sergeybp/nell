@@ -15,21 +15,22 @@ mystem = Mystem()
 punctuation = string.punctuation
 morph = pymorphy2.MorphAnalyzer()
 
-texts_path = '../resources/testT'
+texts_path = '../resources/categories'
 files = [f for f in os.listdir(texts_path) if os.path.isfile(os.path.join(texts_path, f))]
 gId = 0
 
 
-def preprocess_files(db):
+def preprocess_files(db, catName):
+    texts_pathN = texts_path + '/' + catName
     global gId
     gId = 0
-    files = [f for f in os.listdir(texts_path) if os.path.isfile(os.path.join(texts_path, f))]
+    files = [f for f in os.listdir(texts_pathN) if os.path.isfile(os.path.join(texts_pathN, f))]
     print('\ntry to find unprocessed text')
     for file in tqdm(files):
         if db['processed_files'].find({'name': file}).count() != 0:
             logging.info('File [%s] is already in database, skipping' % file)
             continue
-        file_path = texts_path + '/' + file
+        file_path = texts_pathN + '/' + file
         process_sentences_from_file(file_path, db)
         db['processed_files'].insert({'name': file})
         logging.info('File [%s] was sucessfully added to database' % file)
@@ -200,7 +201,7 @@ def ngrams_for_patterns(db):
     return
 
 
-def ngrams_patterns_pkl(db, ngrams_in_file, lastPart):
+def ngrams_patterns_pkl(db, ngrams_in_file, lastPart, cat):
     nowPart = lastPart
     startTime = time.time()
     print('calculating ngrams for patterns')
@@ -234,7 +235,7 @@ def ngrams_patterns_pkl(db, ngrams_in_file, lastPart):
                     alreadySaved = list()
 
                     for i in range(nowPart):
-                        x = load_dictionary('ngrams_dictionary_for_patterns' + str(i) + '.pkl')
+                        x = load_dictionary('ngrams_dictionary_for_patterns.' + cat + '.' + str(i) + '.pkl')
                         for lex in tmpLexems:
                             try:
                                 r = x[lex]
@@ -242,12 +243,12 @@ def ngrams_patterns_pkl(db, ngrams_in_file, lastPart):
                                 alreadySaved.append(lex)
                             except:
                                 r = 1
-                        with open('ngrams_dictionary_for_patterns' + str(i) + '.pkl', 'wb') as f:
+                        with open('ngrams_dictionary_for_patterns.' + cat + '.' + str(i) + '.pkl', 'wb') as f:
                             pickle.dump(x, f)
                     for lex in tmpLexems:
                         if not lex in alreadySaved:
                             toSave[lex] = tmpDict[lex]
-                    with open('ngrams_dictionary_for_patterns' + str(nowPart) + '.pkl', 'wb') as f:
+                    with open('ngrams_dictionary_for_patterns.' + cat + '.' + str(nowPart) + '.pkl', 'wb') as f:
                         pickle.dump(toSave, f)
                     nowPart += 1
                     tmpDict = dict()
@@ -257,7 +258,7 @@ def ngrams_patterns_pkl(db, ngrams_in_file, lastPart):
     alreadySaved = list()
 
     for i in range(nowPart):
-        x = load_dictionary('ngrams_dictionary_for_patterns' + str(i) + '.pkl')
+        x = load_dictionary('ngrams_dictionary_for_patterns.' + cat + '.' + str(i) + '.pkl')
         for lex in tmpLexems:
             try:
                 r = x[lex]
@@ -265,12 +266,12 @@ def ngrams_patterns_pkl(db, ngrams_in_file, lastPart):
                 alreadySaved.append(lex)
             except:
                 r = 1
-        with open('ngrams_dictionary_for_patterns' + str(i) + '.pkl', 'wb') as f:
+        with open('ngrams_dictionary_for_patterns.' + cat + '.' + str(i) + '.pkl', 'wb') as f:
             pickle.dump(x, f)
     for lex in tmpLexems:
         if not lex in alreadySaved:
             toSave[lex] = tmpDict[lex]
-    with open('ngrams_dictionary_for_patterns' + str(nowPart) + '.pkl', 'wb') as f:
+    with open('ngrams_dictionary_for_patterns.' + cat + '.' + str(nowPart) + '.pkl', 'wb') as f:
         pickle.dump(toSave, f)
     nowPart += 1
     tmpDict = dict()
@@ -280,7 +281,7 @@ def ngrams_patterns_pkl(db, ngrams_in_file, lastPart):
     return nowPart
 
 
-def ngrams_instances_pkl(db, ngrams_in_file, lastPart):
+def ngrams_instances_pkl(db, ngrams_in_file, lastPart, cat):
     nowPart = lastPart
     startTime = time.time()
     print('calculating ngrams for instances')
@@ -304,7 +305,7 @@ def ngrams_instances_pkl(db, ngrams_in_file, lastPart):
                     alreadySaved = list()
 
                     for i in range(nowPart):
-                        x = load_dictionary('ngrams_dictionary_for_instances' + str(i) + '.pkl')
+                        x = load_dictionary('ngrams_dictionary_for_instances.' + cat + '.' + str(i) + '.pkl')
                         for lex in tmpLexems:
                             try:
                                 r = x[lex]
@@ -312,12 +313,12 @@ def ngrams_instances_pkl(db, ngrams_in_file, lastPart):
                                 alreadySaved.append(lex)
                             except:
                                 r = 1
-                        with open('ngrams_dictionary_for_instances' + str(i) + '.pkl', 'wb') as f:
+                        with open('ngrams_dictionary_for_instances.' + cat + '.' + str(i) + '.pkl', 'wb') as f:
                             pickle.dump(x, f)
                     for lex in tmpLexems:
                         if not lex in alreadySaved:
                             toSave[lex] = tmpDict[lex]
-                    with open('ngrams_dictionary_for_instances' + str(nowPart) + '.pkl', 'wb') as f:
+                    with open('ngrams_dictionary_for_instances.' + cat + '.' + str(nowPart) + '.pkl', 'wb') as f:
                         pickle.dump(toSave, f)
                     nowPart += 1
                     tmpDict = dict()
@@ -327,7 +328,7 @@ def ngrams_instances_pkl(db, ngrams_in_file, lastPart):
     alreadySaved = list()
 
     for i in range(nowPart):
-        x = load_dictionary('ngrams_dictionary_for_instances' + str(i) + '.pkl')
+        x = load_dictionary('ngrams_dictionary_for_instances.' + cat + '.' + str(i) + '.pkl')
         for lex in tmpLexems:
             try:
                 r = x[lex]
@@ -335,12 +336,12 @@ def ngrams_instances_pkl(db, ngrams_in_file, lastPart):
                 alreadySaved.append(lex)
             except:
                 r = 1
-        with open('ngrams_dictionary_for_instances' + str(i) + '.pkl', 'wb') as f:
+        with open('ngrams_dictionary_for_instances.' + cat + '.' + str(i) + '.pkl', 'wb') as f:
             pickle.dump(x, f)
     for lex in tmpLexems:
         if not lex in alreadySaved:
             toSave[lex] = tmpDict[lex]
-    with open('ngrams_dictionary_for_instances' + str(nowPart) + '.pkl', 'wb') as f:
+    with open('ngrams_dictionary_for_instances.' + cat + '.' + str(nowPart) + '.pkl', 'wb') as f:
         pickle.dump(toSave, f)
     nowPart += 1
     tmpDict = dict()

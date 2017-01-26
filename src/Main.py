@@ -16,6 +16,7 @@ import TextProcesser
 import PatternExtractor
 import InstanceExtractor
 import Cleaner
+import argparse
 
 text_dictionary = dict()
 
@@ -33,12 +34,18 @@ db = None
 cnx = None
 MODE = 2
 
-def connect_to_database():
+
+def connect_to_database(username, password, host, port, catName):
     # client = MongoClient('localhost', 27017)
 
-    client = MongoClient('localhost', 27017)
+    if username != "" and password != "":
+        uri = 'mongodb://' + username + ':' + password + '@' + host + ':' + str(port) + '/'
+        client = MongoClient(uri)
+    else:
+        client = MongoClient(host, port)
     global db
-    db = client.experiments
+    db = client[catName]
+
 
 def inizialize():
     # Read initial ontology and patterns
@@ -48,10 +55,12 @@ def inizialize():
     get_ontology_from_file(ontology_path, db)
     logging.info("ontology inizializated")
 
+
 def load_dictionary(file):
     with open(file, 'rb') as f:
         obj = pickle.load(f)
     return obj
+
 
 def get_patterns_from_file(file, db):
     logging.info('Extracting initial patterns from file')
@@ -186,32 +195,80 @@ def calc_ngrams_instances(db):
 
 
 def main():
+    parser = argparse.ArgumentParser(description='Run CPL algorithm.')
+    parser.add_argument("-c", type=str, help='Category name. Default - all categories')
+    parser.add_argument("-u", type=str, help='Username for MongoDB')
+    parser.add_argument("-p", type=str, help='Password for MongoDB')
+    parser.add_argument("-host", type=str, help='Host for MongoDB. Default - localhost.')
+    parser.add_argument("-port", type=int, help='Port for MongoDB. Default - 27017')
+    parser.add_argument("-i", type=int, help='Iteration count. Default - 10')
+    parser.add_argument("-morph", action="store_true", help='Use morph')
+    parser.add_argument("-ngrams", type=str,
+                        help='Ngrams mode = [1|2|3] 1 - saves ngrams to DB (slow) 2 - saves ngrams to RAM (fast) 3 - saves ngrams to pkl files (recomended)')
+    parser.add_argument("-count", type=int, help='Ngrams max count in pkl file. Default - 5000000')
+    parser.add_argument("-dontinit", action="store_true", help="Don't extract initial ontology")
+    parser.add_argument("-dontindex", action="store_true", help="Don't build indexes")
+    parser.add_argument("-insDicLast", type=int, help='Index of last file for instances dicts. Default - 0')
+    parser.add_argument("-patDicLast", type=int, help='Index of last file for patternd dicts. Default - 0')
 
-    #FIXME count of elements in okl files
-    max_in_file = 5000000
+    args = parser.parse_args()
 
-    #FIXME last indexes of pkl files
+    # Count of elements in pkl files
+    if args.count:
+        max_in_file = args.count
+    else:
+        max_in_file = 5000000
+
     insIndex = 0
+    if args.insDicLast:
+        insIndex = args.insDicLast
+
     patIndex = 0
+    if args.patDicLast:
+        patIndex = args.patDicLast
 
-    #FIXME flag for using morph info
-    useMorph = False
+    # Flag for using morph info
+    if args.morph:
+        useMorph = True
+    else:
+        useMorph = False
 
+    # Initialising dictionaries for storing ngrams in RAM
     ins_ngrams = dict()
     pat_ngrams = dict()
-
     ins_length = 0
     pat_length = 0
 
-    MODE = 3
+    # Mode for ngrams calculation
+    if args.ngrams:
+        MODE = args.ngrams
+    else:
+        MODE = 3
 
-    connect_to_database()
-    inizialize()
+    username = ""
+    password = ""
+    if args.u:
+        username = args.u
+    if args.p:
+        password = args.p
 
-    #getting text from files and building indexes
-    TextProcesser.build_indexes_sceleton(db)
-    TextProcesser.preprocess_files(db)
+    cat = "all"
+    if args.c:
+        cat = args.c
 
+    connect_to_database(username, password, "localhost", 27017, cat)
+
+    # Extracting initial ontology
+    if not args.dontinit:
+        inizialize()
+
+    if cat == "all":
+        cat = ""
+
+    # getting text from files and building indexes
+    if not args.dontindex:
+        TextProcesser.build_indexes_sceleton(db)
+        TextProcesser.preprocess_files(db, cat)
 
     # slow method. saves ngrams to databse. too slow. I dont know how to make it faster.
     if MODE == 2:
@@ -227,22 +284,24 @@ def main():
 
     # method using pkl files.
     if MODE == 3:
-        pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patIndex)
-        ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, insIndex)
+        pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patIndex, cat)
+        ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, insIndex, cat)
 
-
+    iters = 11
+    if args.i:
+        iters = args.i + 1
     treshold = 50
-    for iteration in range(1, 11):
+    for iteration in range(1, iters):
         startTime = time.time()
         print('Iteration [%s] begins' % str(iteration))
         logging.info('=============ITERATION [%s] BEGINS=============' % str(iteration))
         InstanceExtractor.extract_instances(db, iteration, useMorph)
-        InstanceExtractor.evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, ins_length)
+        InstanceExtractor.evaluate_instances(db, treshold, iteration, ins_ngrams, MODE, ins_length, cat)
         PatternExtractor.extract_patterns(db, iteration)
-        PatternExtractor.evaluate_patterns(db, treshold, iteration, pat_ngrams, MODE, pat_length)
+        PatternExtractor.evaluate_patterns(db, treshold, iteration, pat_ngrams, MODE, pat_length, cat)
         Cleaner.zero_coocurence_count(db)
         print('Iteration time: {:.3f} sec'.format(time.time() - startTime))
 
+
 if __name__ == "__main__":
     main()
-
