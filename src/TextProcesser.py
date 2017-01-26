@@ -24,13 +24,27 @@ def preprocess_files(db, catName):
     texts_pathN = texts_path + '/' + catName
     global gId
     gId = 0
+
+    paths = dict()
+
     files = [f for f in os.listdir(texts_pathN) if os.path.isfile(os.path.join(texts_pathN, f))]
+    if catName == "":
+        files = [f for f in os.listdir(texts_path) if os.path.isdir(os.path.join(texts_path, f))]
+        tmp = list()
+        for fa in files:
+            kI = [f for f in os.listdir(texts_path+'/'+fa) if os.path.isfile(os.path.join(texts_path+'/'+fa, f))]
+            for ff in kI:
+                paths[ff] = texts_path+'/'+fa+'/'+ff
+            tmp = tmp + kI
+        files = tmp
     print('\ntry to find unprocessed text')
     for file in tqdm(files):
         if db['processed_files'].find({'name': file}).count() != 0:
             logging.info('File [%s] is already in database, skipping' % file)
             continue
         file_path = texts_pathN + '/' + file
+        if catName == "":
+            file_path = paths[file]
         process_sentences_from_file(file_path, db)
         db['processed_files'].insert({'name': file})
         logging.info('File [%s] was sucessfully added to database' % file)
