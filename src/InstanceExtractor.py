@@ -20,6 +20,7 @@ def load_dictionary(file):
         obj = pickle.load(f)
     return obj
 
+
 def extract_instances(db, iteration, useMorph):
     # iterate throw sentences, that contains categories
     # try to find patterns in this sentences
@@ -45,8 +46,8 @@ def extract_instances(db, iteration, useMorph):
                     pattern_words_list.remove(')')
                 arg1_pos, arg2_pos = check_if_pattern_exists_in_sentence(sentence, pattern_words_list)
                 if arg2_pos is not None:
-                    if arg2_pos >= len(sentence['words']) :
-                        print('--' + sentence['string']+'   --  '+pattern['string'])
+                    if arg2_pos >= len(sentence['words']):
+                        print('--' + sentence['string'] + '   --  ' + pattern['string'])
                 if arg1_pos is not None and arg2_pos is not None and arg2_pos < len(sentence['words']):
                     arg1 = sentence['words'][arg1_pos]
                     arg2 = sentence['words'][arg2_pos]
@@ -58,11 +59,10 @@ def extract_instances(db, iteration, useMorph):
                     else:
                         continue
 
-
                     flag = False
                     if not useMorph:
                         flag = True
-                    if(check_words_for_pattern(arg1, arg2, pattern)):
+                    if (check_words_for_pattern(arg1, arg2, pattern)):
                         flag = True
                     if flag:
                         item = db['promoted_instances'].find({'category_name': cat['category_name'],
@@ -101,23 +101,24 @@ def extract_instances(db, iteration, useMorph):
     return
 
 
-def evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, dict_length, cat):
+def evaluate_instances(db, tT, tMode, tK, tN, iteration, ins_ngrams, MODE, dict_length, cat):
     logging.info('Begin instances evaluating')
     promoted_instances = db['promoted_instances'].find()
     for instance in promoted_instances:
         if instance['extracted_pattern_id'] != -1:
             if instance['count_in_text'] == 0:
                 continue
-            if MODE == 1 :
+            if MODE == 1:
                 try:
                     precision = instance['count_in_text'] / ins_ngrams[instance['lexem'].lower()]
                 except:
                     logging.error('Cannot find words %s in ngrams dictionary for instances' % instance['lexem'])
                     precision = 0
-            if MODE == 2 :
-                if db['ngrams_instances'].find({'lexem' : instance['lexem'].lower()}).count() > 0:
-                    precision = instance['count_in_text'] / db['ngrams_instances'].find_one({'lexem' : instance['lexem'].lower()})['count']
-                else :
+            if MODE == 2:
+                if db['ngrams_instances'].find({'lexem': instance['lexem'].lower()}).count() > 0:
+                    precision = instance['count_in_text'] / \
+                                db['ngrams_instances'].find_one({'lexem': instance['lexem'].lower()})['count']
+                else:
                     logging.error('Cannot find words %s in ngrams dictionary for instances' % instance['lexem'])
                     precision = 0
             if MODE == 3:
@@ -141,9 +142,6 @@ def evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, dict_length, ca
             db['promoted_instances'].update({'_id': instance['_id']},
                                             {'$set': {'precision': precision}})
 
-    # for each category we want to have n = 0..20 (will select later) numbers of promoted instances
-    # at each iteration we calculate first 20 by precision
-    # all that will be out of 20 but was at list earlier will be deleted
     tmpCats = list()
     categories = db['ontology'].find()
     for category in categories:
@@ -153,66 +151,124 @@ def evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, dict_length, ca
         tmpItem['_id'] = category['_id']
         tmpCats.append(tmpItem)
     for cat in tmpCats:
-        treshold = db['ontology'].find_one({'_id': cat['_id']})['max_instance_precision']
+        if (tMode == 3):
+            treshold = db['ontology'].find_one({'_id': cat['_id']})['max_instance_precision']
+            treshold = treshold * tK
+        elif (tMode == 2):
+            treshold = tT
+        else:
+            treshold = tN
+
+        print("AAA -- " + str(treshold))
         promoted_instances_for_category = db['promoted_instances'].find({
             'category_name': cat['category_name']}).sort('precision', pymongo.DESCENDING)
 
-        new_instances = 0
-        deleted_instances = 0
-        stayed_instances = 0
-        for promoted_instance in promoted_instances_for_category:
-            if promoted_instance['extracted_pattern_id'] == -1:
-                stayed_instances += 1
-                continue
-            # first [n] NOT INITIAL instances must be added
-            if promoted_instance['precision'] >= treshold:
-                if promoted_instance['used']:
-                    logging.info("Promoted instance [%s] stayed for category [%s] with precision [%s]" % \
-                                 (promoted_instance['lexem'],
-                                  promoted_instance['category_name'],
-                                  str(promoted_instance['precision'])))
+        if tMode != 1:
+            new_instances = 0
+            deleted_instances = 0
+            stayed_instances = 0
+            for promoted_instance in promoted_instances_for_category:
+                if promoted_instance['extracted_pattern_id'] == -1:
                     stayed_instances += 1
-                else:
-                    logging.info("Promoted instance [%s] added for category [%s] with precision [%s]" % \
-                                 (promoted_instance['lexem'],
-                                  promoted_instance['category_name'],
-                                  str(promoted_instance['precision'])))
-                    new_instances += 1
-                    try:
-                        iteration_added = promoted_instance['iteration_added']
-                    except:
-                        iteration_added = list()
-                    iteration_added.append(iteration)
-                    db['promoted_instances'].update({'_id': promoted_instance['_id']},
-                                                    {'$set': {'used': True,
-                                                              'iteration_added': iteration_added}})
-                if cat['max_instance_precision'] == 0.0:
-                    db['ontology'].update({'_id': cat['_id']},
-                                          {'$set': {'max_instance_precision': promoted_instance['precision']}})
-                logging.info('Updated category [%s] precision to [%.2f]' % (
-                cat['category_name'], promoted_instance['precision']))
+                    continue
+                if promoted_instance['precision'] >= treshold:
+                    if promoted_instance['used']:
+                        logging.info("Promoted instance [%s] stayed for category [%s] with precision [%s]" % \
+                                     (promoted_instance['lexem'],
+                                      promoted_instance['category_name'],
+                                      str(promoted_instance['precision'])))
+                        stayed_instances += 1
+                    else:
+                        logging.info("Promoted instance [%s] added for category [%s] with precision [%s]" % \
+                                     (promoted_instance['lexem'],
+                                      promoted_instance['category_name'],
+                                      str(promoted_instance['precision'])))
+                        new_instances += 1
+                        try:
+                            iteration_added = promoted_instance['iteration_added']
+                        except:
+                            iteration_added = list()
+                        iteration_added.append(iteration)
+                        db['promoted_instances'].update({'_id': promoted_instance['_id']},
+                                                        {'$set': {'used': True,
+                                                                  'iteration_added': iteration_added}})
+                    if cat['max_instance_precision'] == 0.0:
+                        db['ontology'].update({'_id': cat['_id']},
+                                              {'$set': {'max_instance_precision': promoted_instance['precision']}})
+                    logging.info('Updated category [%s] precision to [%.2f]' % (
+                        cat['category_name'], promoted_instance['precision']))
 
-            # other instances must be deleted if they are not in first [n]
-            else:
-                if promoted_instance['used']:
-                    logging.info("Promoted instance [%s] deleted for category [%s] with precision [%s]" % \
-                                 (promoted_instance['lexem'],
-                                  promoted_instance['category_name'],
-                                  str(promoted_instance['precision'])))
-                    deleted_instances += 1
-                    try:
-                        iteration_deleted = promoted_instance['iteration_added']
-                    except:
-                        iteration_deleted = list()
-                    iteration_deleted.append(iteration)
-                    db['promoted_instances'].update({'_id': promoted_instance['_id']},
-                                                    {'$set': {'used': False,
-                                                              'iteration_deleted': iteration_deleted}})
+                else:
+                    if promoted_instance['used']:
+                        logging.info("Promoted instance [%s] deleted for category [%s] with precision [%s]" % \
+                                     (promoted_instance['lexem'],
+                                      promoted_instance['category_name'],
+                                      str(promoted_instance['precision'])))
+                        deleted_instances += 1
+                        try:
+                            iteration_deleted = promoted_instance['iteration_added']
+                        except:
+                            iteration_deleted = list()
+                        iteration_deleted.append(iteration)
+                        db['promoted_instances'].update({'_id': promoted_instance['_id']},
+                                                        {'$set': {'used': False,
+                                                                  'iteration_deleted': iteration_deleted}})
+        else:
+            size = treshold
+            new_instances = 0
+            deleted_instances = 0
+            stayed_instances = 0
+            for promoted_instance in promoted_instances_for_category:
+                if promoted_instance['extracted_pattern_id'] == -1:
+                    stayed_instances += 1
+                    continue
+                # first [n] NOT INITIAL instances must be added
+                if size > 0:
+                    if promoted_instance['used']:
+                        logging.info("Promoted instance [%s] stayed for category [%s] with precision [%s]" % \
+                                     (promoted_instance['lexem'],
+                                      promoted_instance['category_name'],
+                                      str(promoted_instance['precision'])))
+                        stayed_instances += 1
+                    else:
+                        logging.info("Promoted instance [%s] added for category [%s] with precision [%s]" % \
+                                     (promoted_instance['lexem'],
+                                      promoted_instance['category_name'],
+                                      str(promoted_instance['precision'])))
+                        new_instances += 1
+                        try:
+                            iteration_added = promoted_instance['iteration_added']
+                        except:
+                            iteration_added = list()
+                        iteration_added.append(iteration)
+                        db['promoted_instances'].update({'_id': promoted_instance['_id']},
+                                                        {'$set': {'used': True,
+                                                                  'iteration_added': iteration_added}})
+                    size -= 1
+
+                # other instances must be deleted if they are not in first [n]
+                else:
+                    if promoted_instance['used']:
+                        logging.info("Promoted instance [%s] deleted for category [%s] with precision [%s]" % \
+                                     (promoted_instance['lexem'],
+                                      promoted_instance['category_name'],
+                                      str(promoted_instance['precision'])))
+                        deleted_instances += 1
+                        try:
+                            iteration_deleted = promoted_instance['iteration_added']
+                        except:
+                            iteration_deleted = list()
+                        iteration_deleted.append(iteration)
+                        db['promoted_instances'].update({'_id': promoted_instance['_id']},
+                                                        {'$set': {'used': False,
+                                                                  'iteration_deleted': iteration_deleted}})
+
 
         logging.info("Add [%s] new instances, delete [%s], stayed [%d] instances for category [%s]" % \
                      (str(new_instances), str(deleted_instances), stayed_instances, cat['category_name']))
     categories.close()
     return
+
 
 def check_if_pattern_exists_in_sentence(sentence, pattern_words_list):
     # check if pattern is in the sentence and return arg1/arg2 positions
@@ -236,6 +292,7 @@ def check_if_pattern_exists_in_sentence(sentence, pattern_words_list):
         break
 
     return (arg1_pos, arg2_pos)
+
 
 def check_words_for_pattern(arg1, arg2, pattern):
     # check if arguments parameters are the same as in pattern

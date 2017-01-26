@@ -17,6 +17,7 @@ import PatternExtractor
 import InstanceExtractor
 import Cleaner
 import argparse
+import configparser
 
 text_dictionary = dict()
 
@@ -195,43 +196,22 @@ def calc_ngrams_instances(db):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Run CPL algorithm.')
-    parser.add_argument("-c", type=str, help='Category name. Default - all categories')
-    parser.add_argument("-u", type=str, help='Username for MongoDB')
-    parser.add_argument("-p", type=str, help='Password for MongoDB')
-    parser.add_argument("-host", type=str, help='Host for MongoDB. Default - localhost.')
-    parser.add_argument("-port", type=int, help='Port for MongoDB. Default - 27017')
-    parser.add_argument("-i", type=int, help='Iteration count. Default - 10')
-    parser.add_argument("-morph", action="store_true", help='Use morph')
-    parser.add_argument("-ngrams", type=str,
-                        help='Ngrams mode = [1|2|3] 1 - saves ngrams to DB (slow) 2 - saves ngrams to RAM (fast) 3 - saves ngrams to pkl files (recomended)')
-    parser.add_argument("-count", type=int, help='Ngrams max count in pkl file. Default - 5000000')
-    parser.add_argument("-dontinit", action="store_true", help="Don't extract initial ontology")
-    parser.add_argument("-dontindex", action="store_true", help="Don't build indexes")
-    parser.add_argument("-insDicLast", type=int, help='Index of last file for instances dicts. Default - 0')
-    parser.add_argument("-patDicLast", type=int, help='Index of last file for patternd dicts. Default - 0')
 
-    args = parser.parse_args()
+    config = configparser.ConfigParser()
+    config.read("../config.ini")
+    config.sections()
+    c = config['DEFAULT']
 
     # Count of elements in pkl files
-    if args.count:
-        max_in_file = args.count
-    else:
-        max_in_file = 5000000
+    max_in_file = int(c['count'])
 
-    insIndex = 0
-    if args.insDicLast:
-        insIndex = args.insDicLast
-
-    patIndex = 0
-    if args.patDicLast:
-        patIndex = args.patDicLast
+    insIndex = int(c['insDicLast'])
+    patIndex = int(c['patDicLast'])
 
     # Flag for using morph info
-    if args.morph:
+    useMorph = False
+    if(int(c['morph']) == 1):
         useMorph = True
-    else:
-        useMorph = False
 
     # Initialising dictionaries for storing ngrams in RAM
     ins_ngrams = dict()
@@ -240,33 +220,23 @@ def main():
     pat_length = 0
 
     # Mode for ngrams calculation
-    if args.ngrams:
-        MODE = args.ngrams
-    else:
-        MODE = 3
+    MODE = int(c['ngrams'])
 
-    username = ""
-    password = ""
-    if args.u:
-        username = args.u
-    if args.p:
-        password = args.p
-
-    cat = "all"
-    if args.c:
-        cat = args.c
+    username = c['u']
+    password = c['p']
+    cat = c['c']
 
     connect_to_database(username, password, "localhost", 27017, cat)
 
     # Extracting initial ontology
-    if not args.dontinit:
+    if not (int(c['dontinit']) == 1):
         inizialize()
 
     if cat == "all":
         cat = ""
 
     # getting text from files and building indexes
-    if not args.dontindex:
+    if not (int(c['dontindex']) == 1):
         TextProcesser.build_indexes_sceleton(db)
         TextProcesser.preprocess_files(db, cat)
 
@@ -287,18 +257,21 @@ def main():
         pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patIndex, cat)
         ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, insIndex, cat)
 
-    iters = 11
-    if args.i:
-        iters = args.i + 1
+    iters = int(c['i'])+1
+
+    tMode = int(c['tMode'])
+    tK = float(c['tK'])
+    tT = float(c['tT'])
+    tN = int(c['tN'])
     treshold = 50
     for iteration in range(1, iters):
         startTime = time.time()
         print('Iteration [%s] begins' % str(iteration))
         logging.info('=============ITERATION [%s] BEGINS=============' % str(iteration))
         InstanceExtractor.extract_instances(db, iteration, useMorph)
-        InstanceExtractor.evaluate_instances(db, treshold, iteration, ins_ngrams, MODE, ins_length, cat)
+        InstanceExtractor.evaluate_instances(db, tT, tMode, tK, tN, iteration, ins_ngrams, MODE, ins_length, cat)
         PatternExtractor.extract_patterns(db, iteration)
-        PatternExtractor.evaluate_patterns(db, treshold, iteration, pat_ngrams, MODE, pat_length, cat)
+        PatternExtractor.evaluate_patterns(db, tT, tMode, tK, tN, iteration, pat_ngrams, MODE, pat_length, cat)
         Cleaner.zero_coocurence_count(db)
         print('Iteration time: {:.3f} sec'.format(time.time() - startTime))
 
