@@ -155,7 +155,6 @@ def evaluate_instances(db, tT, tMode, tK, tN, iteration, ins_ngrams, MODE, dict_
         else:
             treshold = tN
 
-        print("AAA -- " + str(treshold))
         promoted_instances_for_category = db['promoted_instances'].find({
             'category_name': cat['category_name']}).sort('precision', pymongo.DESCENDING)
 
