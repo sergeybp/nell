@@ -59,7 +59,6 @@ def extract_patterns(db, iteration=1):
                             pattern_string += ' '
                         pattern_string += 'arg1'
 
-                    # FIXME add this case when finding instances
                     if '(' in pattern_string and ')' not in pattern_string:
                         pattern_string += ' )'
 
@@ -77,7 +76,6 @@ def extract_patterns(db, iteration=1):
                     promoted_pattern['arg2']['case'] = sentence['words'][arg2_pos]['case']
                     promoted_pattern['arg2']['pos'] = sentence['words'][arg2_pos]['pos']
 
-                    # TODO also need to check arg1/arg2 conditions
                     if db['patterns'].find({'string': pattern_string,
                                             'extracted_category_id': cat['_id'],
                                             'arg1': promoted_pattern['arg1'],
@@ -166,13 +164,11 @@ def evaluate_patterns(db, tT ,tMode, tK, tN, iteration, tmpDict, MODE, dict_leng
                 logging.error('Cannot find words %s in ngrams_dict' % pattern_string)
                 precision = 0
         if MODE == 3:
-            flag = False
             counter = 0
             for i in range(dict_length):
                 x = load_dictionary('ngrams_dictionary_for_patterns.' + cat + '.' + str(i) + '.pkl')
                 try:
                     precision = pat['coocurence_count'] / x[pattern_string]
-                    flag = True
                 except:
                     counter += 1
             if counter == dict_length:
@@ -198,102 +194,109 @@ def evaluate_patterns(db, tT ,tMode, tK, tN, iteration, tmpDict, MODE, dict_leng
         elif(tMode == 2):
             treshold = tT
         else:
-            #TODO
             treshold = tN
         promoted_patterns_for_category = db['patterns'].find({
             'extracted_category_id': cat['_id']}).sort('precision', pymongo.DESCENDING)
         new_patterns, deleted_patterns, stayed_patterns = 0, 0, 0
 
         if tMode != 1:
-            for promoted_pattern in promoted_patterns_for_category:
-                if promoted_pattern['extracted_category_id'] == -1:
-                    continue
-                if promoted_pattern['precision'] >= treshold:
-                    if promoted_pattern['used']:
-                        logging.info("Promoted pattern [%s] stayed for category [%s] with precision [%s]" % \
-                                     (promoted_pattern['string'],
-                                      cat['category_name'],
-                                      str(promoted_pattern['precision'])))
-                        stayed_patterns += 1
-                    else:
-                        logging.info("Promoted pattern [%s] added for category [%s] with precision [%s]" % \
-                                     (promoted_pattern['string'],
-                                      cat['category_name'],
-                                      str(promoted_pattern['precision'])))
-                        new_patterns += 1
-                        try:
-                            iteration_added = promoted_pattern['iteration_added']
-                        except:
-                            iteration_added = list()
-                        iteration_added.append(iteration)
-                        db['patterns'].update({'_id': promoted_pattern['_id']},
-                                              {'$set': {'used': True,
-                                                        'iteration_added': iteration_added}})
-
-                    if cat['max_pattern_precision'] == 0.0:
-                        db['ontology'].update({'_id': cat['_id']},
-                                              {'$set': {'max_pattern_precision': promoted_pattern['precision']}})
-                        logging.info('Updated category [%s] precision to [%.2f]' % \
-                                     (cat['category_name'], promoted_pattern['precision']))
-                else:
-                    if promoted_pattern['used']:
-                        logging.info("Promoted instance [%s] deleted for category [%s] with precision [%s]" % \
-                                     (promoted_pattern['string'],
-                                      cat['category_name'],
-                                      str(promoted_pattern['precision'])))
-                        deleted_patterns += 1
-                        try:
-                            iteration_deleted = promoted_pattern['iteration_deleted']
-                        except:
-                            iteration_deleted = list()
-                        db['patterns'].update({'_id': promoted_pattern['_id']},
-                                              {'$set': {'used': False,
-                                                        'iteration_deleted': iteration_deleted}})
+            evaluationModeTwoAndThree(promoted_patterns_for_category,treshold,cat,stayed_patterns,new_patterns,iteration,db,deleted_patterns)
         else:
-            size = treshold
-            for promoted_pattern in promoted_patterns_for_category:
-                if promoted_pattern['extracted_category_id'] == -1:
-                    continue
-                if size > 0:
-                    if promoted_pattern['used']:
-                        logging.info("Promoted pattern [%s] stayed for category [%s] with precision [%s]" % \
-                                     (promoted_pattern['string'],
-                                      category['category_name'],
-                                      str(promoted_pattern['precision'])))
-                        stayed_patterns += 1
-                    else:
-                        logging.info("Promoted pattern [%s] added for category [%s] with precision [%s]" % \
-                                     (promoted_pattern['string'],
-                                      category['category_name'],
-                                      str(promoted_pattern['precision'])))
-                        new_patterns += 1
-                        try:
-                            iteration_added = promoted_pattern['iteration_added']
-                        except:
-                            iteration_added = list()
-                        iteration_added.append(iteration)
-                        db['patterns'].update({'_id': promoted_pattern['_id']},
-                                              {'$set': {'used': True,
-                                                        'iteration_added': iteration_added}})
-                    size -= 1
-                else:
-                    if promoted_pattern['used']:
-                        logging.info("Promoted instance [%s] deleted for category [%s] with precision [%s]" % \
-                                     (promoted_pattern['string'],
-                                      category['category_name'],
-                                      str(promoted_pattern['precision'])))
-                        deleted_patterns += 1
-                        try:
-                            iteration_deleted = promoted_pattern['iteration_deleted']
-                        except:
-                            iteration_deleted = list()
-                        db['patterns'].update({'_id': promoted_pattern['_id']},
-                                              {'$set': {'used': False,
-                                                        'iteration_deleted': iteration_deleted}})
-        logging.info("Add [%d] new patterns, delete [%d], stayed [%d] patterns for category [%s]" % \
-                     (new_patterns, deleted_patterns, stayed_patterns, cat['category_name']))
+            evaluationModeOne(promoted_patterns_for_category,treshold,category,stayed_patterns,new_patterns,iteration,db,deleted_patterns,cat)
     categories.close()
     return
+
+def evaluationModeOne(promoted_patterns_for_category, treshold, category, stayed_patterns, new_patterns, iteration,db, deleted_patterns, cat):
+    size = treshold
+    for promoted_pattern in promoted_patterns_for_category:
+        if promoted_pattern['extracted_category_id'] == -1:
+            continue
+        if size > 0:
+            if promoted_pattern['used']:
+                logging.info("Promoted pattern [%s] stayed for category [%s] with precision [%s]" % \
+                             (promoted_pattern['string'],
+                              category['category_name'],
+                              str(promoted_pattern['precision'])))
+                stayed_patterns += 1
+            else:
+                logging.info("Promoted pattern [%s] added for category [%s] with precision [%s]" % \
+                             (promoted_pattern['string'],
+                              category['category_name'],
+                              str(promoted_pattern['precision'])))
+                new_patterns += 1
+                try:
+                    iteration_added = promoted_pattern['iteration_added']
+                except:
+                    iteration_added = list()
+                iteration_added.append(iteration)
+                db['patterns'].update({'_id': promoted_pattern['_id']},
+                                      {'$set': {'used': True,
+                                                'iteration_added': iteration_added}})
+            size -= 1
+        else:
+            if promoted_pattern['used']:
+                logging.info("Promoted instance [%s] deleted for category [%s] with precision [%s]" % \
+                             (promoted_pattern['string'],
+                              category['category_name'],
+                              str(promoted_pattern['precision'])))
+                deleted_patterns += 1
+                try:
+                    iteration_deleted = promoted_pattern['iteration_deleted']
+                except:
+                    iteration_deleted = list()
+                db['patterns'].update({'_id': promoted_pattern['_id']},
+                                      {'$set': {'used': False,
+                                                'iteration_deleted': iteration_deleted}})
+    logging.info("Add [%d] new patterns, delete [%d], stayed [%d] patterns for category [%s]" % \
+          (new_patterns, deleted_patterns, stayed_patterns, cat['category_name']))
+
+def evaluationModeTwoAndThree(promoted_patterns_for_category, treshold, cat, stayed_patterns, new_patterns, iteration, db, deleted_patterns):
+    for promoted_pattern in promoted_patterns_for_category:
+        if promoted_pattern['extracted_category_id'] == -1:
+            continue
+        if promoted_pattern['precision'] >= treshold:
+            if promoted_pattern['used']:
+                logging.info("Promoted pattern [%s] stayed for category [%s] with precision [%s]" % \
+                             (promoted_pattern['string'],
+                              cat['category_name'],
+                              str(promoted_pattern['precision'])))
+                stayed_patterns += 1
+            else:
+                logging.info("Promoted pattern [%s] added for category [%s] with precision [%s]" % \
+                             (promoted_pattern['string'],
+                              cat['category_name'],
+                              str(promoted_pattern['precision'])))
+                new_patterns += 1
+                try:
+                    iteration_added = promoted_pattern['iteration_added']
+                except:
+                    iteration_added = list()
+                iteration_added.append(iteration)
+                db['patterns'].update({'_id': promoted_pattern['_id']},
+                                      {'$set': {'used': True,
+                                                'iteration_added': iteration_added}})
+
+            if cat['max_pattern_precision'] == 0.0:
+                db['ontology'].update({'_id': cat['_id']},
+                                      {'$set': {'max_pattern_precision': promoted_pattern['precision']}})
+                logging.info('Updated category [%s] precision to [%.2f]' % \
+                             (cat['category_name'], promoted_pattern['precision']))
+        else:
+            if promoted_pattern['used']:
+                logging.info("Promoted instance [%s] deleted for category [%s] with precision [%s]" % \
+                             (promoted_pattern['string'],
+                              cat['category_name'],
+                              str(promoted_pattern['precision'])))
+                deleted_patterns += 1
+                try:
+                    iteration_deleted = promoted_pattern['iteration_deleted']
+                except:
+                    iteration_deleted = list()
+                db['patterns'].update({'_id': promoted_pattern['_id']},
+                                      {'$set': {'used': False,
+                                                'iteration_deleted': iteration_deleted}})
+    logging.info("Add [%d] new patterns, delete [%d], stayed [%d] patterns for category [%s]" % \
+                 (new_patterns, deleted_patterns, stayed_patterns, cat['category_name']))
 
 def check_word_in_sentence(sentence, lexem):
     # help to find the word lexem in the sentence and return its position if it exists

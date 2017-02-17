@@ -196,7 +196,6 @@ def calc_ngrams_instances(db):
 
 
 def main():
-
     config = configparser.ConfigParser()
     config.read("../config.ini")
     config.sections()
@@ -210,7 +209,7 @@ def main():
 
     # Flag for using morph info
     useMorph = False
-    if(int(c['morph']) == 1):
+    if (int(c['morph']) == 1):
         useMorph = True
 
     # Initialising dictionaries for storing ngrams in RAM
@@ -257,13 +256,13 @@ def main():
         pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patIndex, cat)
         ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, insIndex, cat)
 
-    iters = int(c['i'])+1
+    iters = int(c['i']) + 1
 
     tMode = int(c['tMode'])
     tK = float(c['tK'])
     tT = float(c['tT'])
     tN = int(c['tN'])
-    treshold = 50
+
     for iteration in range(1, iters):
         startTime = time.time()
         print('Iteration [%s] begins' % str(iteration))
