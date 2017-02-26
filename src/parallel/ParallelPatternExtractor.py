@@ -1,3 +1,5 @@
+import threading
+
 import pandas as pd
 from pymystem3 import Mystem
 import nltk
@@ -22,7 +24,6 @@ def load_dictionary(file):
 
 def extract_patterns(db, iteration, nowCategory):
     logging.info('Begin pattern extraction for category: ' + nowCategory['category_name'])
-
     cat = nowCategory
     for sentence_id in cat['sentences_id']:
         instances = db['promoted_instances'].find({'category_name': cat['category_name'],
@@ -93,7 +94,6 @@ def extract_patterns(db, iteration, nowCategory):
                     logging.info('Found initial pattern [%s], skipping' % pattern_string)
                     continue
                 else:
-                    promoted_pattern['_id'] = db['patterns'].find().count() + 1
                     promoted_pattern['iteration_added'] = [iteration]
                     promoted_pattern['iteration_deleted'] = list()
                     promoted_pattern['used'] = False
@@ -111,7 +111,8 @@ def extract_patterns(db, iteration, nowCategory):
 
                     db['patterns'].insert(promoted_pattern)
                     logging.info('Found new pattern [%s] for category [%s] found for instance [%s]' % \
-                                 (promoted_pattern['string'], cat['category_name'], instance['lexem']))
+                             (promoted_pattern['string'], cat['category_name'], instance['lexem']))
+
                     break
     return
 

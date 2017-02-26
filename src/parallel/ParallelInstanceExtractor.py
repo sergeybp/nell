@@ -1,3 +1,5 @@
+import threading
+
 import pandas as pd
 from pymystem3 import Mystem
 import nltk
@@ -73,7 +75,6 @@ def extract_instances(db, iteration, useMorph, nowCategory):
 
                     else:
                         promoted_instance = dict()
-                        promoted_instance['_id'] = db['promoted_instances'].find().count() + 1
                         promoted_instance['lexem'] = arg2['lexem']
                         promoted_instance['category_name'] = cat['category_name']
                         promoted_instance['used'] = False
@@ -83,11 +84,9 @@ def extract_instances(db, iteration, useMorph, nowCategory):
                         promoted_instance['iteration_added'] = list()
                         promoted_instance['iteration_added'].append(iteration)
                         promoted_instance['iteration_deleted'] = list()
-
                         db['promoted_instances'].insert(promoted_instance)
                         logging.info("Found new promoted instance [%s] for category [%s], with pattern [%s]" % \
-                                     (promoted_instance['lexem'], cat['category_name'], pattern['string']))
-
+                                 (promoted_instance['lexem'], cat['category_name'], pattern['string']))
     return
 
 

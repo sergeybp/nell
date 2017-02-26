@@ -46,7 +46,8 @@ def connect_to_database(username, password, host, port, catName):
     else:
         client = MongoClient(host, port)
     global db
-    db = client[catName]
+    #FIXME delete
+    db = client["all2"]
 
 
 def inizialize():
@@ -265,31 +266,32 @@ def main():
     tT = float(c['tT'])
     tN = int(c['tN'])
 
+    # Going parallel for each category
+    categories = db['ontology'].find()
+    indexes = db['indexes'].find()
+    tmpCats = list()
+    for category in categories:
+        tmpItem = dict()
+        tmpItem['category_name'] = category['category_name']
+        for ind in indexes:
+            if ind['category_name'] == category['category_name']:
+                tmpItem['sentences_id'] = ind['sentences_id']
+                break
+        tmpItem['max_pattern_precision'] = category['max_pattern_precision']
+        tmpItem['max_instance_precision'] = category['max_instance_precision']
+        tmpItem['_id'] = category['_id']
+        tmpCats.append(tmpItem)
+    arguments = []
+    for cat in tmpCats:
+        tmp = [0, useMorph, cat, tT, tMode, tK, tN, ins_ngrams, ins_length, pat_ngrams, pat_length]
+        arguments.append(tmp)
+    pool = Pool()
+    pool.map(allItersForCategory, arguments)
 
-
-    for iteration in range(1, iters):
-
-        # Going parallel for each category
-        categories = db['ontology'].find()
-        indexes = db['indexes'].find()
-        tmpCats = list()
-        for category in categories:
-            tmpItem = dict()
-            tmpItem['category_name'] = category['category_name']
-            for ind in indexes:
-                if ind['category_name'] == category['category_name']:
-                    tmpItem['sentences_id'] = ind['sentences_id']
-                    break
-            tmpItem['max_pattern_precision'] = category['max_pattern_precision']
-            tmpItem['max_instance_precision'] = category['max_instance_precision']
-            tmpItem['_id'] = category['_id']
-            tmpCats.append(tmpItem)
-        arguments = []
-        for cat in tmpCats:
-            tmp = [iteration, useMorph, cat, tT, tMode, tK, tN, ins_ngrams, ins_length, pat_ngrams, pat_length]
-            arguments.append(tmp)
-        pool = Pool()
-        pool.map(oneIterationForCategory, arguments)
+def allItersForCategory(arguments):
+    for iteration in range(1, 5):
+        arguments[0] = iteration
+        oneIterationForCategory(arguments)
 
 
 def oneIterationForCategory(arguments):
