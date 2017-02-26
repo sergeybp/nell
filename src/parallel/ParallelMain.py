@@ -291,6 +291,11 @@ def main():
 def allItersForCategory(arguments):
     for iteration in range(1, 5):
         arguments[0] = iteration
+        categories = db['ontology'].find()
+        for category in categories:
+            if category['category_name'] == arguments[2]['category_name']:
+                arguments[2]['max_pattern_precision'] = category['max_pattern_precision']
+                arguments[2]['max_instance_precision'] = category['max_instance_precision']
         oneIterationForCategory(arguments)
 
 
