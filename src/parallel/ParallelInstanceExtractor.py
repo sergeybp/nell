@@ -1,5 +1,5 @@
+from __future__ import division
 import threading
-
 import pandas as pd
 from pymystem3 import Mystem
 import nltk
@@ -97,7 +97,8 @@ def evaluate_instances(db, tT, tMode, tK, tN, iteration, ins_ngrams, MODE, dict_
         if instance['category_name'] != nowCategory['category_name']:
             continue
         if instance['extracted_pattern_id'] != -1:
-            if instance['count_in_text'] == 0:
+            # NEW CHECK!!
+            if instance['count_in_text'] <= 15:
                 continue
             if MODE == 1:
                 try:

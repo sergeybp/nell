@@ -1,8 +1,13 @@
+from __future__ import division
 import sys
 
 import time
 
 sys.path.insert(0, '../src/')
+
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 import logging
 import pickle
 import nltk
@@ -40,14 +45,18 @@ MODE = 2
 def connect_to_database(username, password, host, port, catName):
     # client = MongoClient('localhost', 27017)
 
+    '''
     if username != "" and password != "":
         uri = 'mongodb://' + username + ':' + password + '@' + host + ':' + str(port) + '/'
         client = MongoClient(uri)
     else:
         client = MongoClient(host, port)
+    '''
+    client = MongoClient('loalhost', 27017)
+
     global db
     #FIXME delete
-    db = client["all2"]
+    db = client['aadb']
 
 
 def inizialize():
@@ -150,7 +159,7 @@ def calc_ngrams_pat(db):
     tmpDict = dict()
     tmpLexems = list()
     counter = 0
-    sentences = db['sentences'].find(timeout=False)
+    sentences = db['sentences'].find()
     for sentence in sentences:
         tWords = sentence['words']
         words = list()
@@ -181,7 +190,7 @@ def calc_ngrams_instances(db):
     tmpDict = dict()
     tmpLexems = list()
     counter = 0
-    sentences = db['sentences'].find(timeout=False)
+    sentences = db['sentences'].find()
     for sentence in sentences:
         words = sentence['words']
         for word in words:

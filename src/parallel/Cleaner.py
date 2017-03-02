@@ -1,3 +1,4 @@
+from __future__ import division
 import pandas as pd
 from pymystem3 import Mystem
 import nltk
@@ -13,6 +14,7 @@ punctuation = string.punctuation
 morph = pymorphy2.MorphAnalyzer()
 category_pattern_dict = dict()
 INF = 100 * 100 * 100
+
 
 MODE = 1
 

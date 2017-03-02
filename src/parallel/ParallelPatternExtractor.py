@@ -1,5 +1,5 @@
+from __future__ import division
 import threading
-
 import pandas as pd
 from pymystem3 import Mystem
 import nltk
@@ -143,7 +143,8 @@ def evaluate_patterns(db, tT ,tMode, tK, tN, iteration, tmpDict, MODE, dict_leng
             pattern_string += token.lower()
             pattern_string += ' '
         pattern_string = pattern_string[:-1]
-        if pat['coocurence_count'] == 0:
+        #NEW CHECK!!
+        if pat['coocurence_count'] <= 15:
             continue
         if MODE == 1:
             try:

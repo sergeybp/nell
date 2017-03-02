@@ -1,15 +1,20 @@
+from __future__ import division
 import pandas as pd
 from pymystem3 import Mystem
 import nltk
 from tqdm import tqdm
 import pymorphy2
 import logging
-import pymysql
+
 import pymongo
 import pickle
 import os
 import string
 import time
+import sys
+
+
+sys.setdefaultencoding('utf-8')
 
 mystem = Mystem()
 punctuation = string.punctuation
@@ -21,6 +26,7 @@ gId = 0
 
 
 def preprocess_files(db, catName):
+
     texts_pathN = texts_path + '/' + catName
     global gId
     gId = 0
@@ -70,13 +76,13 @@ def process_sentences_from_file(file, db):
         catNames.append(category['category_name'])
     categories.close()
     text = open(file, 'r').read()
-    sentences = nltk.sent_tokenize(text)
+    sentences = nltk.sent_tokenize(text.decode('utf-8'))
     for s in sentences:
         sentence = dict()
         sentence['_id'] = lId
         sentence['string'] = s
         sentence['words'] = list()
-        words = nltk.word_tokenize(s)
+        words = nltk.word_tokenize(s.decode('utf-8'))
         reallyNeeded = False
         tmpCategoryName = list()
         for word in words:
@@ -123,7 +129,7 @@ def ngarms_for_instances(db):
     tmpDict = dict()
     tmpLexems = list()
     counter = 0
-    sentences = db['sentences'].find(timeout=False)
+    sentences = db['sentences'].find()
     for sentence in sentences:
         words = sentence['words']
         for word in words:
@@ -167,7 +173,7 @@ def ngrams_for_patterns(db):
     tmpDict = dict()
     tmpLexems = list()
     counter = 0
-    sentences = db['sentences'].find(timeout=False)
+    sentences = db['sentences'].find()
     for sentence in sentences:
         tWords = sentence['words']
         words = list()
@@ -222,7 +228,7 @@ def ngrams_patterns_pkl(db, ngrams_in_file, lastPart, cat):
     tmpDict = dict()
     tmpLexems = list()
     counter = 0
-    sentences = db['sentences'].find(timeout=False)
+    sentences = db['sentences'].find()
     for sentence in sentences:
         tWords = sentence['words']
         words = list()
@@ -302,7 +308,7 @@ def ngrams_instances_pkl(db, ngrams_in_file, lastPart, cat):
     tmpDict = dict()
     tmpLexems = list()
     counter = 0
-    sentences = db['sentences'].find(timeout=False)
+    sentences = db['sentences'].find()
     for sentence in sentences:
         words = sentence['words']
         for word in words:
