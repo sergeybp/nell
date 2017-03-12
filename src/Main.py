@@ -1,3 +1,4 @@
+from __future__ import division
 import sys
 
 import time
@@ -5,10 +6,6 @@ import time
 sys.path.insert(0, '../src/')
 import logging
 import pickle
-import nltk
-import os
-from tqdm import tqdm
-import pymorphy2
 import pandas as pd
 from pymystem3 import Mystem
 from pymongo import MongoClient
@@ -16,12 +13,10 @@ import TextProcesser
 import PatternExtractor
 import InstanceExtractor
 import Cleaner
-import argparse
 import configparser
 
 text_dictionary = dict()
 
-morph = pymorphy2.MorphAnalyzer()
 mystem = Mystem()
 
 # FIXME enter full path for current files on your computer
@@ -30,11 +25,7 @@ patterns_pool_path = '../resources/xlsx/patterns.xlsx'
 log_path = '../log/cpl.log'
 
 INF = 100 * 100 * 100
-ITERATIONS = 100
 db = None
-cnx = None
-MODE = 2
-
 
 def connect_to_database(username, password, host, port, catName):
     # client = MongoClient('localhost', 27017)
@@ -142,75 +133,22 @@ def get_ontology_from_file(file, db):
         db['ontology'].insert(ontology_category)
 
 
-def calc_ngrams_pat(db):
-    startTime = time.time()
-    print('calculating ngrams for patterns')
-    tmpDict = dict()
-    tmpLexems = list()
-    counter = 0
-    sentences = db['sentences'].find(timeout=False)
-    for sentence in sentences:
-        tWords = sentence['words']
-        words = list()
-        for w in tWords:
-            words.append(w['original'])
-        for i in range(1, 3 + 1):
-            ngrams = nltk.ngrams(words, i)
-            for ngram in ngrams:
-                s = ''
-                for word in ngram:
-                    s += word
-                    s += ' '
-                s = s[:-1].lower()
-                lexem = s
-                counter += 1
-                try:
-                    tmpDict[lexem] += 1
-                except:
-                    tmpDict[lexem] = 1
-                    tmpLexems.append(lexem)
-    print('Elapsed time: {:.3f} sec'.format(time.time() - startTime))
-    return tmpDict
-
-
-def calc_ngrams_instances(db):
-    startTime = time.time()
-    print('calculating ngrams for instances')
-    tmpDict = dict()
-    tmpLexems = list()
-    counter = 0
-    sentences = db['sentences'].find(timeout=False)
-    for sentence in sentences:
-        words = sentence['words']
-        for word in words:
-            lexem = word['lexem']
-            counter += 1
-            try:
-                tmpDict[lexem] += 1
-            except:
-                tmpDict[lexem] = 1
-                tmpLexems.append(lexem)
-    sentences.close()
-    print('Elapsed time: {:.3f} sec'.format(time.time() - startTime))
-    return tmpDict
-
-
 def main():
     config = configparser.ConfigParser()
     config.read("../config.ini")
     config.sections()
-    c = config['DEFAULT']
+    config_reader = config['DEFAULT']
 
     # Count of elements in pkl files
-    max_in_file = int(c['count'])
+    max_in_file = int(config_reader['count'])
 
-    insIndex = int(c['insDicLast'])
-    patIndex = int(c['patDicLast'])
+    instances_ngrams_last_dict_index = int(config_reader['insDicLast'])
+    patterns_ngrams_last_dict_index = int(config_reader['patDicLast'])
 
     # Flag for using morph info
-    useMorph = False
-    if (int(c['morph']) == 1):
-        useMorph = True
+    use_morph = False
+    if (int(config_reader['morph']) == 1):
+        use_morph = True
 
     # Initialising dictionaries for storing ngrams in RAM
     ins_ngrams = dict()
@@ -218,59 +156,54 @@ def main():
     ins_length = 0
     pat_length = 0
 
-    # Mode for ngrams calculation
-    MODE = int(c['ngrams'])
+    # ngrams_mode for ngrams calculation
+    ngrams_mode = int(config_reader['ngrams'])
 
-    username = c['u']
-    password = c['p']
-    cat = c['c']
+    username = config_reader['u']
+    password = config_reader['p']
+    now_category = config_reader['c']
 
-    connect_to_database(username, password, "localhost", 27017, cat)
+    connect_to_database(username, password, "localhost", 27017, now_category)
 
     # Extracting initial ontology
-    if not (int(c['dontinit']) == 1):
+    if  (int(config_reader['dontinit']) != 1):
         inizialize()
 
-    if cat == "all":
-        cat = ""
+    if now_category == "all":
+        now_category = ""
 
     # getting text from files and building indexes
-    if not (int(c['dontindex']) == 1):
+    if not (int(config_reader['dontindex']) == 1):
         TextProcesser.build_indexes_sceleton(db)
-        TextProcesser.preprocess_files(db, cat)
-
-    # slow method. saves ngrams to databse. too slow. I dont know how to make it faster.
-    if MODE == 2:
-        TextProcesser.ngarms_for_instances(db)
-        TextProcesser.ngrams_for_patterns(db)
-
+        TextProcesser.preprocess_files(db, now_category)
+        
     # really fast method. saves ngrams in ram. use it in case of not too large texts.
-    if MODE == 1:
-        pat_ngrams = calc_ngrams_pat(db)
+    if ngrams_mode == 1:
+        pat_ngrams = TextProcesser.calc_ngrams_pat(db)
         print('pat_ngrams_length=' + str(len(pat_ngrams)))
-        ins_ngrams = calc_ngrams_instances(db)
+        ins_ngrams = TextProcesser.calc_ngrams_instances(db)
         print('ins_ngrams_length=' + str(len(ins_ngrams)))
 
     # method using pkl files.
-    if MODE == 3:
-        pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patIndex, cat)
-        ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, insIndex, cat)
+    if ngrams_mode == 2:
+        pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patterns_ngrams_last_dict_index, now_category)
+        ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, instances_ngrams_last_dict_index, now_category)
 
-    iters = int(c['i']) + 1
+    iters = int(config_reader['i']) + 1
 
-    tMode = int(c['tMode'])
-    tK = float(c['tK'])
-    tT = float(c['tT'])
-    tN = int(c['tN'])
+    threshold_mode = int(config_reader['tMode'])
+    threshold_k_factor = float(config_reader['tK'])
+    fixed_threshols_between_zero_and_one = float(config_reader['tT'])
+    threshold_fixed_n = int(config_reader['tN'])
 
     for iteration in range(1, iters):
         startTime = time.time()
         print('Iteration [%s] begins' % str(iteration))
         logging.info('=============ITERATION [%s] BEGINS=============' % str(iteration))
-        InstanceExtractor.extract_instances(db, iteration, useMorph)
-        InstanceExtractor.evaluate_instances(db, tT, tMode, tK, tN, iteration, ins_ngrams, MODE, ins_length, cat)
+        InstanceExtractor.extract_instances(db, iteration, use_morph)
+        InstanceExtractor.evaluate_instances(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, ins_ngrams, ngrams_mode, ins_length, now_category)
         PatternExtractor.extract_patterns(db, iteration)
-        PatternExtractor.evaluate_patterns(db, tT, tMode, tK, tN, iteration, pat_ngrams, MODE, pat_length, cat)
+        PatternExtractor.evaluate_patterns(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, pat_ngrams, ngrams_mode, pat_length, now_category)
         Cleaner.zero_coocurence_count(db)
         print('Iteration time: {:.3f} sec'.format(time.time() - startTime))
 

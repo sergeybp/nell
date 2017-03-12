@@ -1,0 +1,7 @@
+2017-03-04 14:28:50,055 Extracting initial patterns from file
+2017-03-04 14:28:50,187 patterns pool inizializated
+2017-03-04 14:28:51,447 ontology inizializated
+2017-03-04 14:28:56,530 =============ITERATION [1] BEGINS=============
+2017-03-04 14:28:56,530 Begin instances extracting
+2017-03-04 14:28:56,808 Found excisting instance [лягушка] for category [амфибия], with pattern [arg1 Amphibia : arg2] and [2] coocurences
+2017-03-04 14:28:56,818 Found excisting instance [жаба] for category [амфибия], with pattern [arg1 Amphibia : лягушки arg2] and [2] coocurences
