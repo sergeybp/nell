@@ -1,8 +1,6 @@
 from __future__ import division
 import sys
-
 import time
-
 sys.path.insert(0, '../src/')
 import logging
 import pickle
@@ -20,7 +18,7 @@ text_dictionary = dict()
 mystem = Mystem()
 
 # FIXME enter full path for current files on your computer
-ontology_path = '../resources/xlsx/categories_animals_ru.xls'
+ontology_path = '../resources/xlsx/ontology.xls'
 patterns_pool_path = '../resources/xlsx/patterns.xlsx'
 log_path = '../log/cpl.log'
 
