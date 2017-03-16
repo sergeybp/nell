@@ -4,11 +4,11 @@ Implementation of one of the components of Never Ending Language Learner (Couple
 
 ## Getting started
 
-To run CPL you need two files: ontology.xls - initial ontology for KB and patterns.xlsx - seed patterns for KB.
+To run CPL you need two files: ontology.xlsx - initial ontology for KB and patterns.xlsx - seed patterns for KB.
 
 ### Initial ontology
 
-File "ontology.xls" contains next rows:
+File "ontology.xlsx" contains next rows:
  * categoryName - name for category (lowercase)
  * seedInstances - seed instances for category. Format: "seed1" "seed2" ... "seedN" (all seeds lowercase)
  * seedExtractionPatterns - ids of seed patterns (from patterns.xlsx) to use for category
@@ -29,6 +29,6 @@ Read more on http://pymorphy2.readthedocs.io/en/latest/user/grammemes.html
 
 ## Structure
 
- * Put "patterns.xlsx" and "ontology.xls" in /resources/xlsx
+ * Put "patterns.xlsx" and "ontology.xlsx" in /resources/xlsx
  * Put texts for text corpus in /resources/categories/category_name/
  * Use config.ini to set configurations
