@@ -18,7 +18,7 @@ text_dictionary = dict()
 mystem = Mystem()
 
 # FIXME enter full path for current files on your computer
-ontology_path = '../resources/xlsx/ontology.xls'
+ontology_path = '../resources/xlsx/ontology.xlsx'
 patterns_pool_path = '../resources/xlsx/patterns.xlsx'
 log_path = '../log/cpl.log'
 
