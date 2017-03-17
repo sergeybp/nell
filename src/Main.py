@@ -1,14 +1,9 @@
+from __future__ import division
 import sys
-
 import time
-
 sys.path.insert(0, '../src/')
 import logging
 import pickle
-import nltk
-import os
-from tqdm import tqdm
-import pymorphy2
 import pandas as pd
 from pymystem3 import Mystem
 from pymongo import MongoClient
@@ -16,29 +11,31 @@ import TextProcesser
 import PatternExtractor
 import InstanceExtractor
 import Cleaner
+import configparser
 
 text_dictionary = dict()
 
-morph = pymorphy2.MorphAnalyzer()
 mystem = Mystem()
 
 # FIXME enter full path for current files on your computer
-ontology_path = '../resources/xlsx/categories_animals_ru.xls'
+ontology_path = '../resources/xlsx/ontology.xlsx'
 patterns_pool_path = '../resources/xlsx/patterns.xlsx'
 log_path = '../log/cpl.log'
 
 INF = 100 * 100 * 100
-ITERATIONS = 100
 db = None
-cnx = None
-MODE = 2
 
-def connect_to_database():
+def connect_to_database(username, password, host, port, catName):
     # client = MongoClient('localhost', 27017)
 
-    client = MongoClient('localhost', 27017)
+    if username != "" and password != "":
+        uri = 'mongodb://' + username + ':' + password + '@' + host + ':' + str(port) + '/'
+        client = MongoClient(uri)
+    else:
+        client = MongoClient(host, port)
     global db
-    db = client.experiments
+    db = client[catName]
+
 
 def inizialize():
     # Read initial ontology and patterns
@@ -48,10 +45,12 @@ def inizialize():
     get_ontology_from_file(ontology_path, db)
     logging.info("ontology inizializated")
 
+
 def load_dictionary(file):
     with open(file, 'rb') as f:
         obj = pickle.load(f)
     return obj
+
 
 def get_patterns_from_file(file, db):
     logging.info('Extracting initial patterns from file')
@@ -132,117 +131,80 @@ def get_ontology_from_file(file, db):
         db['ontology'].insert(ontology_category)
 
 
-def calc_ngrams_pat(db):
-    startTime = time.time()
-    print('calculating ngrams for patterns')
-    tmpDict = dict()
-    tmpLexems = list()
-    counter = 0
-    sentences = db['sentences'].find(timeout=False)
-    for sentence in sentences:
-        tWords = sentence['words']
-        words = list()
-        for w in tWords:
-            words.append(w['original'])
-        for i in range(1, 3 + 1):
-            ngrams = nltk.ngrams(words, i)
-            for ngram in ngrams:
-                s = ''
-                for word in ngram:
-                    s += word
-                    s += ' '
-                s = s[:-1].lower()
-                lexem = s
-                counter += 1
-                try:
-                    tmpDict[lexem] += 1
-                except:
-                    tmpDict[lexem] = 1
-                    tmpLexems.append(lexem)
-    print('Elapsed time: {:.3f} sec'.format(time.time() - startTime))
-    return tmpDict
-
-
-def calc_ngrams_instances(db):
-    startTime = time.time()
-    print('calculating ngrams for instances')
-    tmpDict = dict()
-    tmpLexems = list()
-    counter = 0
-    sentences = db['sentences'].find(timeout=False)
-    for sentence in sentences:
-        words = sentence['words']
-        for word in words:
-            lexem = word['lexem']
-            counter += 1
-            try:
-                tmpDict[lexem] += 1
-            except:
-                tmpDict[lexem] = 1
-                tmpLexems.append(lexem)
-    sentences.close()
-    print('Elapsed time: {:.3f} sec'.format(time.time() - startTime))
-    return tmpDict
-
-
 def main():
+    config = configparser.ConfigParser()
+    config.read("../config.ini")
+    config.sections()
+    config_reader = config['DEFAULT']
 
-    #FIXME count of elements in okl files
-    max_in_file = 5000000
+    # Count of elements in pkl files
+    max_in_file = int(config_reader['count'])
 
-    #FIXME last indexes of pkl files
-    insIndex = 0
-    patIndex = 0
+    instances_ngrams_last_dict_index = int(config_reader['insDicLast'])
+    patterns_ngrams_last_dict_index = int(config_reader['patDicLast'])
 
-    #FIXME flag for using morph info
-    useMorph = False
+    # Flag for using morph info
+    use_morph = False
+    if (int(config_reader['morph']) == 1):
+        use_morph = True
 
+    # Initialising dictionaries for storing ngrams in RAM
     ins_ngrams = dict()
     pat_ngrams = dict()
-
     ins_length = 0
     pat_length = 0
 
-    MODE = 3
+    # ngrams_mode for ngrams calculation
+    ngrams_mode = int(config_reader['ngrams'])
 
-    connect_to_database()
-    inizialize()
+    username = config_reader['u']
+    password = config_reader['p']
+    now_category = config_reader['c']
 
-    #getting text from files and building indexes
-    TextProcesser.build_indexes_sceleton(db)
-    TextProcesser.preprocess_files(db)
+    connect_to_database(username, password, "localhost", 27017, now_category)
 
+    # Extracting initial ontology
+    if  (int(config_reader['dontinit']) != 1):
+        inizialize()
 
-    # slow method. saves ngrams to databse. too slow. I dont know how to make it faster.
-    if MODE == 2:
-        TextProcesser.ngarms_for_instances(db)
-        TextProcesser.ngrams_for_patterns(db)
+    if now_category == "all":
+        now_category = ""
 
+    # getting text from files and building indexes
+    if not (int(config_reader['dontindex']) == 1):
+        TextProcesser.build_indexes_sceleton(db)
+        TextProcesser.preprocess_files(db, now_category)
+        
     # really fast method. saves ngrams in ram. use it in case of not too large texts.
-    if MODE == 1:
-        pat_ngrams = calc_ngrams_pat(db)
+    if ngrams_mode == 1:
+        pat_ngrams = TextProcesser.calc_ngrams_pat(db)
         print('pat_ngrams_length=' + str(len(pat_ngrams)))
-        ins_ngrams = calc_ngrams_instances(db)
+        ins_ngrams = TextProcesser.calc_ngrams_instances(db)
         print('ins_ngrams_length=' + str(len(ins_ngrams)))
 
     # method using pkl files.
-    if MODE == 3:
-        pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patIndex)
-        ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, insIndex)
+    if ngrams_mode == 2:
+        pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patterns_ngrams_last_dict_index, now_category)
+        ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, instances_ngrams_last_dict_index, now_category)
 
+    iters = int(config_reader['i']) + 1
 
-    treshold = 50
-    for iteration in range(1, 11):
+    threshold_mode = int(config_reader['tMode'])
+    threshold_k_factor = float(config_reader['tK'])
+    fixed_threshols_between_zero_and_one = float(config_reader['tT'])
+    threshold_fixed_n = int(config_reader['tN'])
+
+    for iteration in range(1, iters):
         startTime = time.time()
         print('Iteration [%s] begins' % str(iteration))
         logging.info('=============ITERATION [%s] BEGINS=============' % str(iteration))
-        InstanceExtractor.extract_instances(db, iteration, useMorph)
-        InstanceExtractor.evaluate_instances(db, treshold, iteration,ins_ngrams, MODE, ins_length)
+        InstanceExtractor.extract_instances(db, iteration, use_morph)
+        InstanceExtractor.evaluate_instances(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, ins_ngrams, ngrams_mode, ins_length, now_category)
         PatternExtractor.extract_patterns(db, iteration)
-        PatternExtractor.evaluate_patterns(db, treshold, iteration, pat_ngrams, MODE, pat_length)
+        PatternExtractor.evaluate_patterns(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, pat_ngrams, ngrams_mode, pat_length, now_category)
         Cleaner.zero_coocurence_count(db)
         print('Iteration time: {:.3f} sec'.format(time.time() - startTime))
 
+
 if __name__ == "__main__":
     main()
-

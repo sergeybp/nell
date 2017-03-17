@@ -1,23 +1,8 @@
-import pandas as pd
-from pymystem3 import Mystem
-import nltk
-import string
-import pymorphy2
+from __future__ import division
 import logging
-import pymongo
-import pickle
-
-mystem = Mystem()
-punctuation = string.punctuation
-
-morph = pymorphy2.MorphAnalyzer()
-category_pattern_dict = dict()
-INF = 100 * 100 * 100
-
-MODE = 1
 
 def zero_coocurence_count(db):
-    logging.info('Reser coocurence counts for instances/patterns')
+    logging.info('Reset coocurence counts for instances/patterns')
     instances = db['promoted_instances'].find()
     patterns = db['patterns'].find()
 
