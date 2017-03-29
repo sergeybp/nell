@@ -71,7 +71,7 @@ def process_sentences_from_file(file, db):
         sentence['_id'] = lId
         sentence['string'] = s
         sentence['words'] = list()
-        words = nltk.word_tokenize(s.decode('utf-8'))
+        words = nltk.word_tokenize(s)
         reallyNeeded = False
         tmpCategoryName = list()
         for word in words:

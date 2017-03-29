@@ -5,6 +5,7 @@ import pymongo
 import pickle
 
 category_pattern_dict = dict()
+tmp_count_dict = dict()
 
 def load_dictionary(file):
     with open(file, 'rb') as f:
@@ -24,6 +25,7 @@ def extract_instances(db, iteration, use_morph):
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
+        tmp_count_dict = dict()
         for sentence_id in now_category['sentences_id']:
             sentence = db['sentences'].find_one({'_id': sentence_id})
             patterns = db['patterns'].find({'used': True})
@@ -71,6 +73,20 @@ def extract_instances(db, iteration, use_morph):
                                 (arg2['lexem'], now_category['category_name'], pattern['string'], count_in_text))
 
                         else:
+                            really_need_to_promote = False
+                            x = 1
+                            try:
+                                x = tmp_count_dict[arg2['lexem']]
+                                x += 1
+                                tmp_count_dict[arg2['lexem']] = x
+                                if x >= 2:
+                                    really_need_to_promote = True
+                            except:
+                                tmp_count_dict[arg2['lexem']] = 1
+
+                            if not really_need_to_promote:
+                                continue
+
                             promoted_instance = dict()
                             promoted_instance['_id'] = db['promoted_instances'].find().count() + 1
                             promoted_instance['lexem'] = arg2['lexem']
@@ -78,7 +94,7 @@ def extract_instances(db, iteration, use_morph):
                             promoted_instance['used'] = False
                             promoted_instance['precision'] = 0
                             promoted_instance['extracted_pattern_id'] = pattern['_id']
-                            promoted_instance['count_in_text'] = 1
+                            promoted_instance['count_in_text'] = x
                             promoted_instance['iteration_added'] = list()
                             promoted_instance['iteration_added'].append(iteration)
                             promoted_instance['iteration_deleted'] = list()

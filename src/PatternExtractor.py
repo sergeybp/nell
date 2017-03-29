@@ -5,6 +5,8 @@ import pymongo
 import pickle
 
 
+tmp_count_dict = dict()
+
 def load_dictionary(file):
     with open(file, 'rb') as f:
         obj = pickle.load(f)
@@ -21,6 +23,7 @@ def extract_patterns(db, iteration):
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
+        tmp_count_dict = dict()
         for sentence_id in now_category['sentences_id']:
             instances = db['promoted_instances'].find({'category_name': now_category['category_name'],
                                                        'used': True})
@@ -83,19 +86,34 @@ def extract_patterns(db, iteration):
                         logging.info(
                             'Updating excisting pattern [%s] for category [%s] found for instance [%s] with [%d] coocurences' % \
                             (found_pattern['string'], category['category_name'], instance['lexem'],
-                             found_pattern['coocurence_count']))
+                             coocurence_count))
 
                     elif db['patterns'].find({'string': pattern_string,
                                               'extracted_category_id': -1}).count() > 0:
                         logging.info('Found initial pattern [%s], skipping' % pattern_string)
                         continue
                     else:
+
+                        really_need_to_promote = False
+                        x = 1
+                        try:
+                            x = tmp_count_dict[pattern_string]
+                            x += 1
+                            tmp_count_dict[pattern_string] = x
+                            if x >= 2:
+                                really_need_to_promote = True
+                        except:
+                            tmp_count_dict[pattern_string] = 1
+
+                        if not really_need_to_promote:
+                            continue
+
                         promoted_pattern['_id'] = db['patterns'].find().count() + 1
                         promoted_pattern['iteration_added'] = [iteration]
                         promoted_pattern['iteration_deleted'] = list()
                         promoted_pattern['used'] = False
                         promoted_pattern['extracted_category_id'] = now_category['_id']
-                        promoted_pattern['coocurence_count'] = 1
+                        promoted_pattern['coocurence_count'] = x
                         promoted_pattern['string'] = pattern_string
                         promoted_pattern['precision'] = 0
 
