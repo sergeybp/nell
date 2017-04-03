@@ -125,8 +125,8 @@ def extract_patterns(db, iteration):
                         # TODO but the same conditions for everything else
 
                         db['patterns'].insert(promoted_pattern)
-                        logging.info('Found new pattern [%s] for category [%s] found for instance [%s]' % \
-                                     (promoted_pattern['string'], now_category['category_name'], instance['lexem']))
+                        logging.info('Found new pattern [%s] for category [%s] found for instance [%s] with [%d] coocurences' % \
+                                     (promoted_pattern['string'], now_category['category_name'], instance['lexem'], promoted_pattern['coocurence_count']))
                         break
     categories.close()
     return

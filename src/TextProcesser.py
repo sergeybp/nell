@@ -76,7 +76,7 @@ def process_sentences_from_file(file, db):
         tmpCategoryName = list()
         for word in words:
             word_dict = dict()
-            if '[[' in word or ']]' in word or '[' in word or ']' in word or '==' in word or '|' in word or '=' in word:
+            if '[[' in word or ']]' in word or '[' in word or ']' in word or '==' in word or '|' in word or '=' in word or '{{' in word or '}}' in word:
                 continue
             word_dict['original'] = word
             if word in punctuation:

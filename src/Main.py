@@ -11,6 +11,7 @@ import TextProcesser
 import PatternExtractor
 import InstanceExtractor
 import Cleaner
+import SubPatterns
 import configparser
 
 text_dictionary = dict()
@@ -203,6 +204,7 @@ def main():
         PatternExtractor.extract_patterns(db, iteration)
         PatternExtractor.evaluate_patterns(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, pat_ngrams, ngrams_mode, pat_length, now_category)
         Cleaner.zero_coocurence_count(db)
+        SubPatterns.filter_all_patterns(db)
         print('Iteration time: {:.3f} sec'.format(time.time() - startTime))
 
 
