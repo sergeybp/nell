@@ -4,13 +4,14 @@ import logging
 import pymongo
 import pickle
 
-
 tmp_count_dict = dict()
+
 
 def load_dictionary(file):
     with open(file, 'rb') as f:
         obj = pickle.load(f)
     return obj
+
 
 def extract_patterns(db, iteration):
     logging.info('Begin pattern extraction')
@@ -33,7 +34,17 @@ def extract_patterns(db, iteration):
                     arg1_pos = check_word_in_sentence(sentence, now_category['category_name'])
                     arg2_pos = check_word_in_sentence(sentence, instance['lexem'])
 
-                    if abs(arg1_pos - arg2_pos) >= 5:
+                    n = 5
+                    off = 0
+                    ad_words = instance['ad_words']
+                    if arg2_pos - 1 >= 0:
+                        for w in ad_words:
+                            if sentence['words'][arg2_pos - 1]['original'] == w['original']:
+                                n = 6
+                                off = 1
+                                break
+
+                    if abs(arg1_pos - arg2_pos) >= n:
                         # choose the patterns not more than 5 words im sum with arg1/arg2
                         continue
 
@@ -41,7 +52,7 @@ def extract_patterns(db, iteration):
                     # to form the pattern string
                     if arg1_pos < arg2_pos:
                         pattern_string = 'arg1 '
-                        for i in range(arg1_pos + 1, arg2_pos):
+                        for i in range(arg1_pos + 1, arg2_pos - off):
                             pattern_string += sentence['words'][i]['original']
                             pattern_string += ' '
                         pattern_string += 'arg2'
@@ -125,14 +136,18 @@ def extract_patterns(db, iteration):
                         # TODO but the same conditions for everything else
 
                         db['patterns'].insert(promoted_pattern)
-                        logging.info('Found new pattern [%s] for category [%s] found for instance [%s] with [%d] coocurences' % \
-                                     (promoted_pattern['string'], now_category['category_name'], instance['lexem'], promoted_pattern['coocurence_count']))
+                        logging.info(
+                            'Found new pattern [%s] for category [%s] found for instance [%s] with [%d] coocurences' % \
+                            (promoted_pattern['string'], now_category['category_name'], instance['lexem'],
+                             promoted_pattern['coocurence_count']))
                         break
     categories.close()
     return
 
 
-def evaluate_patterns(db, fixed_threshold_between_zero_and_one ,threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, patterns_ngrams_dictionary, ngrams_dictionary_mode, ngrams_dictionaries_count, now_category):
+def evaluate_patterns(db, fixed_threshold_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n,
+                      iteration, patterns_ngrams_dictionary, ngrams_dictionary_mode, ngrams_dictionaries_count,
+                      now_category):
     logging.info('Begin patterns evaluation')
     patterns = db['patterns'].find()
     tmp_list_patterns = list()
@@ -190,10 +205,10 @@ def evaluate_patterns(db, fixed_threshold_between_zero_and_one ,threshold_mode, 
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
-        if(threshold_mode == 3):
+        if (threshold_mode == 3):
             treshold = db['ontology'].find_one({'_id': now_category['_id']})['max_pattern_precision']
             treshold = treshold * threshold_k_factor
-        elif(threshold_mode == 2):
+        elif (threshold_mode == 2):
             treshold = fixed_threshold_between_zero_and_one
         else:
             treshold = threshold_fixed_n
@@ -202,13 +217,17 @@ def evaluate_patterns(db, fixed_threshold_between_zero_and_one ,threshold_mode, 
         new_patterns, deleted_patterns, stayed_patterns = 0, 0, 0
 
         if threshold_mode != 1:
-            evaluation_mode_fixed_value_threshold(promoted_patterns_for_category,treshold,now_category,stayed_patterns,new_patterns,iteration,db,deleted_patterns)
+            evaluation_mode_fixed_value_threshold(promoted_patterns_for_category, treshold, now_category,
+                                                  stayed_patterns, new_patterns, iteration, db, deleted_patterns)
         else:
-            evaluation_mode_fixed_size_threshold(promoted_patterns_for_category,treshold,category,stayed_patterns,new_patterns,iteration,db,deleted_patterns,now_category)
+            evaluation_mode_fixed_size_threshold(promoted_patterns_for_category, treshold, category, stayed_patterns,
+                                                 new_patterns, iteration, db, deleted_patterns, now_category)
     categories.close()
     return
 
-def evaluation_mode_fixed_size_threshold(promoted_patterns_for_category, treshold, category, stayed_patterns, new_patterns, iteration,db, deleted_patterns, now_category):
+
+def evaluation_mode_fixed_size_threshold(promoted_patterns_for_category, treshold, category, stayed_patterns,
+                                         new_patterns, iteration, db, deleted_patterns, now_category):
     size = treshold
     for promoted_pattern in promoted_patterns_for_category:
         if promoted_pattern['extracted_category_id'] == -1:
@@ -250,9 +269,11 @@ def evaluation_mode_fixed_size_threshold(promoted_patterns_for_category, treshol
                                       {'$set': {'used': False,
                                                 'iteration_deleted': iteration_deleted}})
     logging.info("Add [%d] new patterns, delete [%d], stayed [%d] patterns for category [%s]" % \
-          (new_patterns, deleted_patterns, stayed_patterns, now_category['category_name']))
+                 (new_patterns, deleted_patterns, stayed_patterns, now_category['category_name']))
 
-def evaluation_mode_fixed_value_threshold(promoted_patterns_for_category, treshold, now_category, stayed_patterns, new_patterns, iteration, db, deleted_patterns):
+
+def evaluation_mode_fixed_value_threshold(promoted_patterns_for_category, treshold, now_category, stayed_patterns,
+                                          new_patterns, iteration, db, deleted_patterns):
     for promoted_pattern in promoted_patterns_for_category:
         if promoted_pattern['extracted_category_id'] == -1:
             continue
@@ -299,6 +320,7 @@ def evaluation_mode_fixed_value_threshold(promoted_patterns_for_category, tresho
                                                 'iteration_deleted': iteration_deleted}})
     logging.info("Add [%d] new patterns, delete [%d], stayed [%d] patterns for category [%s]" % \
                  (new_patterns, deleted_patterns, stayed_patterns, now_category['category_name']))
+
 
 def check_word_in_sentence(sentence, lexem):
     # help to find the word lexem in the sentence and return its position if it exists

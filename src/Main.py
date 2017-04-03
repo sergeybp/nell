@@ -127,6 +127,7 @@ def get_ontology_from_file(file, db):
             promoted_instance['iteration_deleted'] = list()
             # this instances would have the highest precision because was added by default
             promoted_instance['count_in_text'] = INF
+            promoted_instance['ad_words'] = list()
             db['promoted_instances'].insert(promoted_instance)
 
         db['ontology'].insert(ontology_category)
