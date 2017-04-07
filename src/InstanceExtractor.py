@@ -7,6 +7,7 @@ import pickle
 category_pattern_dict = dict()
 tmp_count_dict = dict()
 
+
 def load_dictionary(file):
     with open(file, 'rb') as f:
         obj = pickle.load(f)
@@ -104,15 +105,16 @@ def extract_instances(db, iteration, use_morph):
 
                         else:
                             really_need_to_promote = False
-                            x = 1
                             try:
                                 x = tmp_count_dict[arg2['lexem']]
-                                x += 1
-                                tmp_count_dict[arg2['lexem']] = x
-                                if x >= 2:
+                                if not pattern['string'] in x:
+                                    x.append(pattern['string'])
+                                if len(x):
                                     really_need_to_promote = True
                             except:
-                                tmp_count_dict[arg2['lexem']] = 1
+                                x = list()
+                                x.append(pattern['string'])
+                                tmp_count_dict[arg2['lexem']] = x
 
                             if not really_need_to_promote:
                                 continue
@@ -147,8 +149,30 @@ def evaluate_instances(db, fixed_threshold_between_zero_and_one, threshold_mode,
     promoted_instances = db['promoted_instances'].find()
     for instance in promoted_instances:
         if instance['extracted_pattern_id'] != -1:
-            if instance['count_in_text'] < 3:
+            if instance['count_in_text'] < 1:
                 continue
+
+            # Count in text. Real.
+            need_to_add_by_count = False
+            if ngrams_dictionary_mode == 2:
+                for i in range(ngrams_dictionaries_count):
+                    x = load_dictionary('ngrams_dictionary_for_instances.' + now_category + '.' + str(i) + '.pkl')
+                    try:
+                        real_count_in_text = x[instance['lexem'].lower()]
+                        if real_count_in_text >= 2:
+                            need_to_add_by_count = True
+                    except:
+                        continue
+            if ngrams_dictionary_mode == 1:
+                try:
+                    real_count_in_text = instances_ngrams_dictionary[instance['lexem'].lower()]
+                    if real_count_in_text >= 2:
+                        need_to_add_by_count = True
+                except:
+                    real_count_in_text = 0
+            if not need_to_add_by_count:
+                continue
+
             if ngrams_dictionary_mode == 1:
                 try:
                     precision = instance['count_in_text'] / instances_ngrams_dictionary[instance['lexem'].lower()]

@@ -106,15 +106,17 @@ def extract_patterns(db, iteration):
                     else:
 
                         really_need_to_promote = False
-                        x = 1
                         try:
                             x = tmp_count_dict[pattern_string]
-                            x += 1
+                            if not sentence['words'][arg2_pos]['lexem'] in x:
+                                x.append(sentence['words'][arg2_pos]['lexem'])
                             tmp_count_dict[pattern_string] = x
-                            if x >= 2:
+                            if len(x) >= 2:
                                 really_need_to_promote = True
                         except:
-                            tmp_count_dict[pattern_string] = 1
+                            x = list()
+                            x.append(sentence['words'][arg2_pos]['lexem'])
+                            tmp_count_dict[pattern_string] = x
 
                         if not really_need_to_promote:
                             continue
@@ -172,8 +174,30 @@ def evaluate_patterns(db, fixed_threshold_between_zero_and_one, threshold_mode, 
             pattern_string += token.lower()
             pattern_string += ' '
         pattern_string = pattern_string[:-1]
-        if now_pattern['coocurence_count'] < 3:
+        if now_pattern['coocurence_count'] < 1:
             continue
+
+        # Count in text. Real.
+        need_to_add_by_count = False
+        if ngrams_dictionary_mode == 2:
+            for i in range(ngrams_dictionaries_count):
+                x = load_dictionary('ngrams_dictionary_for_patterns.' + now_category + '.' + str(i) + '.pkl')
+                try:
+                    real_count_in_text = x[pattern_string]
+                    if real_count_in_text >= 2:
+                        need_to_add_by_count = True
+                except:
+                    continue
+        if ngrams_dictionary_mode == 1:
+            try:
+                real_count_in_text = patterns_ngrams_dictionary[pattern_string]
+                if real_count_in_text >= 2:
+                    need_to_add_by_count = True
+            except:
+                real_count_in_text = 0
+        if not need_to_add_by_count:
+            continue
+
         if ngrams_dictionary_mode == 1:
             try:
                 precision = now_pattern['coocurence_count'] / patterns_ngrams_dictionary[pattern_string]
