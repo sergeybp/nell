@@ -126,7 +126,7 @@ def extract_instances(db, iteration, use_morph):
                             promoted_instance['used'] = False
                             promoted_instance['precision'] = 0
                             promoted_instance['extracted_pattern_id'] = pattern['_id']
-                            promoted_instance['count_in_text'] = x
+                            promoted_instance['count_in_text'] = len(tmp_count_dict[arg2['lexem']])
                             promoted_instance['iteration_added'] = list()
                             promoted_instance['iteration_added'].append(iteration)
                             promoted_instance['iteration_deleted'] = list()

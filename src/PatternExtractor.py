@@ -126,7 +126,7 @@ def extract_patterns(db, iteration):
                         promoted_pattern['iteration_deleted'] = list()
                         promoted_pattern['used'] = False
                         promoted_pattern['extracted_category_id'] = now_category['_id']
-                        promoted_pattern['coocurence_count'] = x
+                        promoted_pattern['coocurence_count'] = len(tmp_count_dict[pattern_string])
                         promoted_pattern['string'] = pattern_string
                         promoted_pattern['precision'] = 0
 
@@ -139,9 +139,8 @@ def extract_patterns(db, iteration):
 
                         db['patterns'].insert(promoted_pattern)
                         logging.info(
-                            'Found new pattern [%s] for category [%s] found for instance [%s] with [%d] coocurences' % \
-                            (promoted_pattern['string'], now_category['category_name'], instance['lexem'],
-                             promoted_pattern['coocurence_count']))
+                            'Found new pattern [%s] for category [%s] found for instance [%s]' % \
+                            (promoted_pattern['string'], now_category['category_name'], instance['lexem']))
                         break
     categories.close()
     return
