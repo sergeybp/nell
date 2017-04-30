@@ -71,12 +71,12 @@ def process_sentences_from_file(file, db):
         sentence['_id'] = lId
         sentence['string'] = s
         sentence['words'] = list()
-        words = nltk.word_tokenize(s.decode('utf-8'))
+        words = nltk.word_tokenize(s)
         reallyNeeded = False
         tmpCategoryName = list()
         for word in words:
             word_dict = dict()
-            if '[[' in word or ']]' in word or '[' in word or ']' in word or '==' in word or '|' in word or '=' in word:
+            if '[[' in word or ']]' in word or '[' in word or ']' in word or '==' in word or '|' in word or '=' in word or '{{' in word or '}}' in word:
                 continue
             word_dict['original'] = word
             if word in punctuation:

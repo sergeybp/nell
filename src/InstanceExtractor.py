@@ -5,6 +5,8 @@ import pymongo
 import pickle
 
 category_pattern_dict = dict()
+tmp_count_dict = dict()
+
 
 def load_dictionary(file):
     with open(file, 'rb') as f:
@@ -24,6 +26,7 @@ def extract_instances(db, iteration, use_morph):
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
+        tmp_count_dict = dict()
         for sentence_id in now_category['sentences_id']:
             sentence = db['sentences'].find_one({'_id': sentence_id})
             patterns = db['patterns'].find({'used': True})
@@ -34,9 +37,11 @@ def extract_instances(db, iteration, use_morph):
                 if ')' in pattern_words_list:
                     pattern_words_list.remove(')')
                 arg1_pos, arg2_pos = check_if_pattern_exists_in_sentence(sentence, pattern_words_list)
+
                 if arg2_pos is not None:
                     if arg2_pos >= len(sentence['words']):
                         logging.info('Pattern [' + pattern['string'] + '] is too long for sentence [' + sentence['string'] + '].')
+
                 if arg1_pos is not None and arg2_pos is not None and arg2_pos < len(sentence['words']):
                     arg1 = sentence['words'][arg1_pos]
                     arg2 = sentence['words'][arg2_pos]
@@ -45,14 +50,31 @@ def extract_instances(db, iteration, use_morph):
                                     arg2['lexem'] == now_category['category_name']:
                         if arg2['lexem'] == now_category['category_name']:
                             (arg1, arg2) = (arg2, arg1)
+                            (arg1_pos, arg2_pos) = (arg2_pos, arg1_pos)
                     else:
                         continue
+
+                    #word next arg2 for complex instances
+                    next_word= None
+                    if arg2_pos-1 >= 0:
+                        next_word = sentence['words'][arg2_pos-1]
 
                     need_promote = False
                     if not use_morph:
                         need_promote = True
+                        next_word = None
+
                     if (check_words_for_pattern(arg1, arg2, pattern)):
                         need_promote = True
+                        next_word = None
+
+                    additional_word = None
+                    if not need_promote and next_word is not None:
+                        if check_words_for_complex_instance(arg1, arg2, next_word, pattern):
+                            need_promote = True
+                            additional_word = arg2
+                            arg2 = next_word
+
                     if need_promote:
                         item = db['promoted_instances'].find({'category_name': now_category['category_name'],
                                                               'lexem': arg2['lexem']})
@@ -64,13 +86,39 @@ def extract_instances(db, iteration, use_morph):
                                 count_in_text = 1
                             else:
                                 count_in_text += 1
+
                             db['promoted_instances'].update({'_id': item['_id']},
                                                             {'$set': {'count_in_text': count_in_text}})
+                            if not additional_word is None:
+                                try:
+                                    ad_words = item['ad_words']
+                                except:
+                                    ad_words = list()
+                                if not additional_word in ad_words:
+                                    ad_words.append(additional_word)
+                                db['promoted_instances'].update({'_id': item['_id']},
+                                                                {'$set': {'ad_words': ad_words}})
+
                             logging.info(
                                 'Found excisting instance [%s] for category [%s], with pattern [%s] and [%d] coocurences' % \
                                 (arg2['lexem'], now_category['category_name'], pattern['string'], count_in_text))
 
                         else:
+                            really_need_to_promote = False
+                            try:
+                                x = tmp_count_dict[arg2['lexem']]
+                                if not pattern['string'] in x:
+                                    x.append(pattern['string'])
+                                if len(x):
+                                    really_need_to_promote = True
+                            except:
+                                x = list()
+                                x.append(pattern['string'])
+                                tmp_count_dict[arg2['lexem']] = x
+
+                            if not really_need_to_promote:
+                                continue
+
                             promoted_instance = dict()
                             promoted_instance['_id'] = db['promoted_instances'].find().count() + 1
                             promoted_instance['lexem'] = arg2['lexem']
@@ -78,10 +126,16 @@ def extract_instances(db, iteration, use_morph):
                             promoted_instance['used'] = False
                             promoted_instance['precision'] = 0
                             promoted_instance['extracted_pattern_id'] = pattern['_id']
-                            promoted_instance['count_in_text'] = 1
+                            promoted_instance['count_in_text'] = len(tmp_count_dict[arg2['lexem']])
                             promoted_instance['iteration_added'] = list()
                             promoted_instance['iteration_added'].append(iteration)
                             promoted_instance['iteration_deleted'] = list()
+                            if additional_word is not None:
+                                ad_words = list()
+                                ad_words.append(additional_word)
+                                promoted_instance['ad_words'] = ad_words
+                            else:
+                                promoted_instance['ad_words'] = list()
 
                             db['promoted_instances'].insert(promoted_instance)
                             logging.info("Found new promoted instance [%s] for category [%s], with pattern [%s]" % \
@@ -95,8 +149,30 @@ def evaluate_instances(db, fixed_threshold_between_zero_and_one, threshold_mode,
     promoted_instances = db['promoted_instances'].find()
     for instance in promoted_instances:
         if instance['extracted_pattern_id'] != -1:
-            if instance['count_in_text'] < 3:
+            if instance['count_in_text'] < 1:
                 continue
+
+            # Count in text. Real.
+            need_to_add_by_count = False
+            if ngrams_dictionary_mode == 2:
+                for i in range(ngrams_dictionaries_count):
+                    x = load_dictionary('ngrams_dictionary_for_instances.' + now_category + '.' + str(i) + '.pkl')
+                    try:
+                        real_count_in_text = x[instance['lexem'].lower()]
+                        if real_count_in_text >= 2:
+                            need_to_add_by_count = True
+                    except:
+                        continue
+            if ngrams_dictionary_mode == 1:
+                try:
+                    real_count_in_text = instances_ngrams_dictionary[instance['lexem'].lower()]
+                    if real_count_in_text >= 2:
+                        need_to_add_by_count = True
+                except:
+                    real_count_in_text = 0
+            if not need_to_add_by_count:
+                continue
+
             if ngrams_dictionary_mode == 1:
                 try:
                     precision = instance['count_in_text'] / instances_ngrams_dictionary[instance['lexem'].lower()]
@@ -288,6 +364,25 @@ def check_words_for_pattern(arg1, arg2, pattern):
                 (arg2['number'] == pattern['arg2']['num'] or pattern['arg2']['num'] == 'all') and \
                         arg2['pos'].lower() == pattern['arg2']['pos'].lower():
             return True
+    except:
+        pass
+    return False
+
+def check_words_for_complex_instance(arg1, arg2, next_word, pattern):
+    pattern_words_list = nltk.word_tokenize(pattern['string'])
+    if next_word['original'] == pattern_words_list[0]:
+        return False
+    try:
+        if next_word['case'] == pattern['arg2']['case'] and \
+                (next_word['number'] == pattern['arg2']['num'] or pattern['arg2']['num'] == 'all') and \
+                        next_word['pos'].lower() == pattern['arg2']['pos'].lower() and \
+                        arg1['case'] == pattern['arg1']['case'] and \
+                (arg1['number'] == pattern['arg1']['num'] or pattern['arg1']['num'] == 'all') and \
+                        arg1['pos'].lower() == pattern['arg1']['pos'].lower():
+            if arg2['pos'].lower() == 'adjf':
+                return True
+            else :
+                return False
     except:
         pass
     return False

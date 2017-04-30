@@ -11,6 +11,7 @@ import TextProcesser
 import PatternExtractor
 import InstanceExtractor
 import Cleaner
+import SubPatterns
 import configparser
 
 text_dictionary = dict()
@@ -126,6 +127,7 @@ def get_ontology_from_file(file, db):
             promoted_instance['iteration_deleted'] = list()
             # this instances would have the highest precision because was added by default
             promoted_instance['count_in_text'] = INF
+            promoted_instance['ad_words'] = list()
             db['promoted_instances'].insert(promoted_instance)
 
         db['ontology'].insert(ontology_category)
@@ -203,6 +205,7 @@ def main():
         PatternExtractor.extract_patterns(db, iteration)
         PatternExtractor.evaluate_patterns(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, pat_ngrams, ngrams_mode, pat_length, now_category)
         Cleaner.zero_coocurence_count(db)
+        SubPatterns.filter_all_patterns(db)
         print('Iteration time: {:.3f} sec'.format(time.time() - startTime))
 
 
