@@ -13,7 +13,7 @@ def load_dictionary(file):
     return obj
 
 
-def extract_patterns(db, iteration):
+def extract_patterns(db, iteration, now_category_for_parallel_execution):
     logging.info('Begin pattern extraction')
     categories = db['indexes'].find()
     tmp_list_categories = list()
@@ -24,6 +24,11 @@ def extract_patterns(db, iteration):
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
+
+        # Here is a parallel shit
+        if now_category['category_name'] != now_category_for_parallel_execution:
+            continue
+
         tmp_count_dict = dict()
         for sentence_id in now_category['sentences_id']:
             instances = db['promoted_instances'].find({'category_name': now_category['category_name'],
@@ -96,7 +101,7 @@ def extract_patterns(db, iteration):
 
                         logging.info(
                             'Updating excisting pattern [%s] for category [%s] found for instance [%s] with [%d] coocurences' % \
-                            (found_pattern['string'], category['category_name'], instance['lexem'],
+                            (found_pattern['string'], now_category['category_name'], instance['lexem'],
                              coocurence_count))
 
                     elif db['patterns'].find({'string': pattern_string,
@@ -121,7 +126,6 @@ def extract_patterns(db, iteration):
                         if not really_need_to_promote:
                             continue
 
-                        promoted_pattern['_id'] = db['patterns'].find().count() + 1
                         promoted_pattern['iteration_added'] = [iteration]
                         promoted_pattern['iteration_deleted'] = list()
                         promoted_pattern['used'] = False
@@ -148,7 +152,7 @@ def extract_patterns(db, iteration):
 
 def evaluate_patterns(db, fixed_threshold_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n,
                       iteration, patterns_ngrams_dictionary, ngrams_dictionary_mode, ngrams_dictionaries_count,
-                      now_category):
+                      now_category,now_category_for_parallel_execution):
     logging.info('Begin patterns evaluation')
     patterns = db['patterns'].find()
     tmp_list_patterns = list()
@@ -159,9 +163,24 @@ def evaluate_patterns(db, fixed_threshold_between_zero_and_one, threshold_mode, 
         tmp_item['coocurence_count'] = pattern['coocurence_count']
         tmp_item['_id'] = pattern['_id']
         tmp_list_patterns.append(tmp_item)
+
+    # Here is a parallel shit
+    check_category_id_for_parallel = -100
+    categories = db['ontology'].find()
+    for category in categories:
+        if category['category_name'] == now_category_for_parallel_execution:
+            check_category_id_for_parallel = category['_id']
+            break
+    categories.close()
+
     for now_pattern in tmp_list_patterns:
         if now_pattern['extracted_category_id'] == -1:
             continue
+
+        # Here is a parallel shit
+        if now_pattern['extracted_category_id'] != check_category_id_for_parallel:
+            continue
+
         pattern_string = now_pattern['string']
         pattern_tokens = nltk.word_tokenize(pattern_string)
         pattern_tokens.remove('arg1')
@@ -228,6 +247,11 @@ def evaluate_patterns(db, fixed_threshold_between_zero_and_one, threshold_mode, 
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
+
+        # Here is a parallel shit
+        if now_category['category_name'] != now_category_for_parallel_execution:
+            continue
+
         if (threshold_mode == 3):
             treshold = db['ontology'].find_one({'_id': now_category['_id']})['max_pattern_precision']
             treshold = treshold * threshold_k_factor
@@ -243,7 +267,7 @@ def evaluate_patterns(db, fixed_threshold_between_zero_and_one, threshold_mode, 
             evaluation_mode_fixed_value_threshold(promoted_patterns_for_category, treshold, now_category,
                                                   stayed_patterns, new_patterns, iteration, db, deleted_patterns)
         else:
-            evaluation_mode_fixed_size_threshold(promoted_patterns_for_category, treshold, category, stayed_patterns,
+            evaluation_mode_fixed_size_threshold(promoted_patterns_for_category, treshold, now_category, stayed_patterns,
                                                  new_patterns, iteration, db, deleted_patterns, now_category)
     categories.close()
     return

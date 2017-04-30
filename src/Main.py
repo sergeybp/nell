@@ -1,5 +1,6 @@
 from __future__ import division
 import sys
+import argparse
 import time
 sys.path.insert(0, '../src/')
 import logging
@@ -12,6 +13,7 @@ import PatternExtractor
 import InstanceExtractor
 import Cleaner
 import SubPatterns
+import IndexCreate
 import configparser
 
 text_dictionary = dict()
@@ -134,6 +136,17 @@ def get_ontology_from_file(file, db):
 
 
 def main():
+
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("parallel_category_low_case")
+    args = parser.parse_args()
+    now_category_for_parallel_execution = args.parallel_category_low_case
+    now_category_for_parallel_execution = now_category_for_parallel_execution.decode('utf-8')
+    print(now_category_for_parallel_execution)
+
+    logging.basicConfig(filename=log_path+now_category_for_parallel_execution+'.log', filemode='w', level=logging.DEBUG, format='%(asctime)s %(message)s')
+
     config = configparser.ConfigParser()
     config.read("../config.ini")
     config.sections()
@@ -141,6 +154,12 @@ def main():
 
     # Count of elements in pkl files
     max_in_file = int(config_reader['count'])
+
+    #createing indexes
+    index_create_mongo_db = int(config_reader['index_mongo_db'])
+    if index_create_mongo_db == 1:
+        IndexCreate.create_indexes(db)
+
 
     instances_ngrams_last_dict_index = int(config_reader['insDicLast'])
     patterns_ngrams_last_dict_index = int(config_reader['patDicLast'])
@@ -165,6 +184,7 @@ def main():
 
     connect_to_database(username, password, "localhost", 27017, now_category)
 
+
     # Extracting initial ontology
     if  (int(config_reader['dontinit']) != 1):
         inizialize()
@@ -176,7 +196,8 @@ def main():
     if not (int(config_reader['dontindex']) == 1):
         TextProcesser.build_indexes_sceleton(db)
         TextProcesser.preprocess_files(db, now_category)
-        
+
+
     # really fast method. saves ngrams in ram. use it in case of not too large texts.
     if ngrams_mode == 1:
         pat_ngrams = TextProcesser.calc_ngrams_pat(db)
@@ -189,6 +210,9 @@ def main():
         pat_length = TextProcesser.ngrams_patterns_pkl(db, max_in_file, patterns_ngrams_last_dict_index, now_category)
         ins_length = TextProcesser.ngrams_instances_pkl(db, max_in_file, instances_ngrams_last_dict_index, now_category)
 
+    pat_length = 1
+    ins_length = 1
+
     iters = int(config_reader['i']) + 1
 
     threshold_mode = int(config_reader['tMode'])
@@ -196,17 +220,18 @@ def main():
     fixed_threshols_between_zero_and_one = float(config_reader['tT'])
     threshold_fixed_n = int(config_reader['tN'])
 
+
     for iteration in range(1, iters):
         startTime = time.time()
-        print('Iteration [%s] begins' % str(iteration))
-        logging.info('=============ITERATION [%s] BEGINS=============' % str(iteration))
-        InstanceExtractor.extract_instances(db, iteration, use_morph)
-        InstanceExtractor.evaluate_instances(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, ins_ngrams, ngrams_mode, ins_length, now_category)
-        PatternExtractor.extract_patterns(db, iteration)
-        PatternExtractor.evaluate_patterns(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, pat_ngrams, ngrams_mode, pat_length, now_category)
-        Cleaner.zero_coocurence_count(db)
-        SubPatterns.filter_all_patterns(db)
-        print('Iteration time: {:.3f} sec'.format(time.time() - startTime))
+        print('Category: '+now_category_for_parallel_execution+'    Iteration [%s] begins' % str(iteration))
+        logging.info('Category: '+now_category_for_parallel_execution+'   =============ITERATION [%s] BEGINS=============' % str(iteration))
+        InstanceExtractor.extract_instances(db, iteration, use_morph, now_category_for_parallel_execution)
+        InstanceExtractor.evaluate_instances(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, ins_ngrams, ngrams_mode, ins_length, now_category, now_category_for_parallel_execution)
+        PatternExtractor.extract_patterns(db, iteration, now_category_for_parallel_execution)
+        PatternExtractor.evaluate_patterns(db, fixed_threshols_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, pat_ngrams, ngrams_mode, pat_length, now_category, now_category_for_parallel_execution)
+        Cleaner.zero_coocurence_count(db, now_category_for_parallel_execution)
+        SubPatterns.filter_all_patterns(db, now_category_for_parallel_execution)
+        print('Category: '+now_category_for_parallel_execution+'  Iteration time: {:.3f} sec'.format(time.time() - startTime))
 
 
 if __name__ == "__main__":

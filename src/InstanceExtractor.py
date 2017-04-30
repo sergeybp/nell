@@ -14,7 +14,7 @@ def load_dictionary(file):
     return obj
 
 
-def extract_instances(db, iteration, use_morph):
+def extract_instances(db, iteration, use_morph,now_category_for_parallel_execution):
     logging.info("Begin instances extracting")
     category_pattern_dict.clear()
     categories = db['indexes'].find()
@@ -26,6 +26,11 @@ def extract_instances(db, iteration, use_morph):
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
+
+        # Here is a parallel shit
+        if now_category['category_name'] != now_category_for_parallel_execution:
+            continue
+
         tmp_count_dict = dict()
         for sentence_id in now_category['sentences_id']:
             sentence = db['sentences'].find_one({'_id': sentence_id})
@@ -109,7 +114,7 @@ def extract_instances(db, iteration, use_morph):
                                 x = tmp_count_dict[arg2['lexem']]
                                 if not pattern['string'] in x:
                                     x.append(pattern['string'])
-                                if len(x):
+                                if len(x) >= 2:
                                     really_need_to_promote = True
                             except:
                                 x = list()
@@ -120,7 +125,6 @@ def extract_instances(db, iteration, use_morph):
                                 continue
 
                             promoted_instance = dict()
-                            promoted_instance['_id'] = db['promoted_instances'].find().count() + 1
                             promoted_instance['lexem'] = arg2['lexem']
                             promoted_instance['category_name'] = now_category['category_name']
                             promoted_instance['used'] = False
@@ -144,10 +148,15 @@ def extract_instances(db, iteration, use_morph):
     return
 
 
-def evaluate_instances(db, fixed_threshold_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, instances_ngrams_dictionary, ngrams_dictionary_mode, ngrams_dictionaries_count, now_category):
+def evaluate_instances(db, fixed_threshold_between_zero_and_one, threshold_mode, threshold_k_factor, threshold_fixed_n, iteration, instances_ngrams_dictionary, ngrams_dictionary_mode, ngrams_dictionaries_count, now_category, now_category_for_parallel_execution):
     logging.info('Begin instances evaluating')
     promoted_instances = db['promoted_instances'].find()
     for instance in promoted_instances:
+
+        # Here is a parallel shit
+        if instance['category_name'] != now_category_for_parallel_execution:
+            continue
+
         if instance['extracted_pattern_id'] != -1:
             if instance['count_in_text'] < 1:
                 continue
@@ -207,6 +216,11 @@ def evaluate_instances(db, fixed_threshold_between_zero_and_one, threshold_mode,
         tmp_item['_id'] = category['_id']
         tmp_list_categories.append(tmp_item)
     for now_category in tmp_list_categories:
+
+        # Here is a parallel shit
+        if now_category['category_name'] != now_category_for_parallel_execution:
+            continue
+
         if (threshold_mode == 3):
             threshold = db['ontology'].find_one({'_id': now_category['_id']})['max_instance_precision']
             threshold = threshold * threshold_k_factor

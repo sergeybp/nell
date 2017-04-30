@@ -23,14 +23,14 @@ def find_sub_pattern(db, pattern):
     found_w = None
     old_w = None
     ontology = db['indexes'].find()
-    cats = dict()
+    categories = dict()
     for cat in ontology:
-        cats[cat['_id']] = cat['category_name']
+        categories[cat['_id']] = cat['category_name']
     if pattern['extracted_category_id'] == -1:
         return None
     for word in words:
         if not word == 'arg1' and not word == 'arg2':
-            w = find_another_word(db, word, cats[pattern['extracted_category_id']])
+            w = find_another_word(db, word, categories[pattern['extracted_category_id']])
             if not w is None:
                 found = True
                 found_w = w
@@ -81,9 +81,24 @@ def find_another_word(db, word, cat):
     return None
 
 
-def filter_all_patterns(db):
+def filter_all_patterns(db, now_category_for_parallel_execution):
     patterns = db['patterns'].find({'used': True})
+
+    # Here is a parallel shit
+    check_category_id_for_parallel = -100
+    categories = db['ontology'].find()
+    for category in categories:
+        if category['category_name'] == now_category_for_parallel_execution:
+            check_category_id_for_parallel = category['_id']
+            break
+    categories.close()
+
     for pattern in patterns:
+
+        # Here is a parallel shit
+        if pattern['extracted_category_id'] != check_category_id_for_parallel:
+            continue
+
         sp = pattern['string']
         id = pattern['_id']
         p = find_sub_pattern(db, pattern)
@@ -110,14 +125,14 @@ def main():
     ppp = open('subpatterns.txt', 'w')
     patterns = db['patterns'].find({'used':True})
     ontology = db['indexes'].find()
-    cats = dict()
+    categories = dict()
     for cat in ontology:
-        cats[cat['_id']] = cat['category_name']
+        categories[cat['_id']] = cat['category_name']
     for pattern in patterns:
         sp = pattern['string']
         p = find_sub_pattern(db, pattern)
         if not p is None:
-            ppp.write(sp.encode('utf-8') + ' __ ' + p['string'].encode('utf-8')+' ___ ' + cats[p['extracted_category_id']].encode('utf-8')+'\n')
+            ppp.write(sp.encode('utf-8') + ' __ ' + p['string'].encode('utf-8')+' ___ ' + categories[p['extracted_category_id']].encode('utf-8')+'\n')
     ppp.close()
 
 if __name__ == "__main__":
